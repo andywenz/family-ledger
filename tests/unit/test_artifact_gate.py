@@ -66,3 +66,18 @@ def test_build_excludes_path_dependent_files() -> None:
     assert not _packaged(Path("ledger/__pycache__/x.pyc"))
     assert _packaged(Path("httpx-0.28.1.dist-info/METADATA"))
     assert _packaged(Path("ledger/runtime.py"))
+
+
+def test_compiled_contract_matches_yaml(tmp_path: Path) -> None:
+    """制品里的 openapi.json 与 YAML 内容完全相同；运行时优先读取 JSON。"""
+    import yaml
+
+    from build_lambda import compile_contract
+
+    src = ROOT / "contracts" / "openapi.yaml"
+    out = tmp_path / "openapi.json"
+    compile_contract(src, out)
+    assert json.loads(out.read_text("utf-8")) == yaml.safe_load(src.read_text("utf-8"))
+    first = out.read_bytes()
+    compile_contract(src, out)
+    assert out.read_bytes() == first  # 确定性：同一 YAML 生成相同字节

@@ -149,8 +149,9 @@ export class CoreStack extends Stack {
           removalPolicy: RemovalPolicy.DESTROY,
         }),
       });
-    const api = fn("Api", "ledger.handlers.api.handler", 20);
-    const authAdmin = fn("AuthAdmin", "ledger.handlers.api.handler", 20);
+    // 网站首屏并发 5～7 个请求：1769 MB（1 个完整 vCPU）缩短冷启动（2026-10-05 实测 512 MB 冷启动 5～6.5 秒）
+    const api = fn("Api", "ledger.handlers.api.handler", 20, 1769);
+    const authAdmin = fn("AuthAdmin", "ledger.handlers.api.handler", 20, 1769);
     // 卡片回调须 3 秒内响应：1769 MB＝1 个完整 vCPU，缩短冷启动（2026-10-04 实测 512 MB 冷启动约 4.7 秒）
     const feishuFn = fn("FeishuCallback", "ledger.handlers.api.handler", 10, 1769);
     const worker = fn("Worker", "ledger.handlers.worker.worker_handler", 120, 1024);
@@ -184,6 +185,17 @@ export class CoreStack extends Stack {
 
     worker.addEventSource(new SqsEventSource(queue, { batchSize: 1, reportBatchItemFailures: true }));
     relay.addEventSource(new DynamoEventSource(table, { startingPosition: StartingPosition.LATEST, batchSize: 50, retryAttempts: 3 }));
+    // 每 5 分钟预热：Api 同时 4 个实例（覆盖首屏并发），AuthAdmin 2 个（登录与刷新）
+    const warm = (hold: number) => RuleTargetInput.fromObject({ warmup: true, hold_ms: hold });
+    // 每条规则最多 5 个目标：Api 与 AuthAdmin 分开
+    new Rule(this, "ApiWarmup", {
+      schedule: Schedule.rate(Duration.minutes(5)),
+      targets: [1, 2, 3, 4].map(() => new LambdaFunction(api, { event: warm(800) })),
+    });
+    new Rule(this, "AuthWarmup", {
+      schedule: Schedule.rate(Duration.minutes(5)),
+      targets: [1, 2].map(() => new LambdaFunction(authAdmin, { event: warm(800) })),
+    });
     new Rule(this, "FeishuWarmup", {
       schedule: Schedule.rate(Duration.minutes(5)),
       targets: [new LambdaFunction(feishuFn, { event: RuleTargetInput.fromObject({ warmup: true }) })],

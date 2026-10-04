@@ -18,6 +18,7 @@ REQUIRED = [
     "ledger/handlers/worker.py",
     "ledger/handlers/maintenance.py",
     "resources/contracts/openapi.yaml",
+    "resources/contracts/openapi.json",
     "resources/contracts/model.schema.json",
     "resources/seed/categories.json",
     "resources/config/model-prices.json",

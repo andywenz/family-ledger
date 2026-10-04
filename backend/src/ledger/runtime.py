@@ -74,31 +74,52 @@ def build(settings: Settings | None = None) -> Runtime:
             s.cognito_client_id,
         )
         jwks = PyJWKClient(f"{s.cognito_issuer}/.well-known/jwks.json", cache_keys=True)
-        secret = (
-            boto3.client("secretsmanager", region_name=s.region)
-            .get_secret_value(SecretId=s.session_secret_arn)["SecretString"]
-            .encode()
-        )
+        sm = boto3.client("secretsmanager", region_name=s.region)
+        secret = sm.get_secret_value(SecretId=s.session_secret_arn)["SecretString"].encode()
         deps = AuthDeps(idp, JwtVerifier(s.cognito_issuer, s.cognito_client_id, jwks), secret)
         from ledger.adapters.blobs import S3BlobStore
 
-        s3 = boto3.client("s3", region_name=s.region)
-        from ledger.adapters.feishu import FeishuClient
+        def s3() -> Any:
+            return boto3.client("s3", region_name=s.region)
 
-        feishu_secrets = _feishu_secrets(
-            boto3.client("secretsmanager", region_name=s.region).get_secret_value(
-                SecretId=os.environ["LEDGER_FEISHU_SECRET_ARN"]
-            )["SecretString"]
+        def feishu_secrets() -> Any:
+            return _feishu_secrets(
+                sm.get_secret_value(SecretId=os.environ["LEDGER_FEISHU_SECRET_ARN"])["SecretString"]
+            )
+
+        def feishu_api(svc: LazyServices) -> Any:
+            from ledger.adapters.feishu import FeishuClient
+
+            fs = svc["feishu_secrets"]
+            return FeishuClient(fs) if fs else None
+
+        # 冷启动只做每个请求都需要的事；S3、飞书、模型客户端首次使用时才创建（2026-10-05）
+        services = LazyServices(
+            {
+                "blobs": lambda _: S3BlobStore(s3(), s.blob_bucket),
+                "exports": lambda _: S3BlobStore(s3(), s.export_bucket),
+                "feishu_secrets": lambda _: feishu_secrets(),
+                "feishu_api": feishu_api,
+                "model": lambda _: build_model(s),
+            }
         )
-        services = {
-            "blobs": S3BlobStore(s3, s.blob_bucket),
-            "exports": S3BlobStore(s3, s.export_bucket),
-            "feishu_secrets": feishu_secrets,
-            "feishu_api": FeishuClient(feishu_secrets) if feishu_secrets else None,
-        }
-    services["model"] = build_model(s)
+    if not isinstance(services, LazyServices):
+        services["model"] = build_model(s)
     _register_routes()
     return Runtime(settings=s, ctx=ctx, auth=deps, services=services)
+
+
+class LazyServices(dict[str, Any]):
+    """按需创建的服务表：首次读取某项时调用其工厂并缓存；直接赋值的项照常覆盖。"""
+
+    def __init__(self, factories: dict[str, Any]) -> None:
+        super().__init__()
+        self.factories = factories
+
+    def __getitem__(self, key: str) -> Any:
+        if not dict.__contains__(self, key) and key in self.factories:
+            dict.__setitem__(self, key, self.factories[key](self))
+        return dict.__getitem__(self, key)
 
 
 def _feishu_secrets(raw: str) -> Any:

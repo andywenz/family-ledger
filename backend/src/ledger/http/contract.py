@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from functools import cache
@@ -36,8 +37,13 @@ def _escape(token: str) -> str:
 @cache
 def spec() -> dict[str, Any]:
     path = Path(os.environ.get("LEDGER_OPENAPI", DEFAULT_SPEC))
+    compiled = path.with_suffix(".json")
+    if compiled.exists():
+        # Lambda 制品中由 build_lambda 从 YAML 预先转换；JSON 解析比 YAML 快数十倍（冷启动）
+        data: dict[str, Any] = json.loads(compiled.read_text(encoding="utf-8"))
+        return data
     with path.open(encoding="utf-8") as f:
-        data: dict[str, Any] = yaml.safe_load(f)
+        data = yaml.safe_load(f)
     return data
 
 

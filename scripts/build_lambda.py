@@ -43,6 +43,17 @@ def _packaged(rel: Path) -> bool:
     return not (rel.name == "RECORD" and rel.parent.name.endswith(".dist-info"))
 
 
+def compile_contract(src: Path, dst: Path) -> None:
+    """YAML 契约预转为 JSON（确定性输出），运行时冷启动免去 YAML 解析；转换前后内容必须相同。"""
+    import yaml
+
+    data = yaml.safe_load(src.read_text(encoding="utf-8"))
+    text = json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    if json.loads(text) != data:
+        raise SystemExit("契约 YAML 含 JSON 无法表示的值")
+    dst.write_text(text, encoding="utf-8")
+
+
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -102,6 +113,9 @@ def build(with_deps: bool) -> Path:
         dst = BUILD / "resources" / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dst)
+    compile_contract(
+        ROOT / "contracts" / "openapi.yaml", BUILD / "resources" / "contracts" / "openapi.json"
+    )
     DIST.mkdir(exist_ok=True)
     out = DIST / "lambda.zip"
     files = sorted(p for p in BUILD.rglob("*") if p.is_file() and _packaged(p.relative_to(BUILD)))
@@ -130,7 +144,7 @@ def main() -> None:
         "pnpm_lock_sha256": sha256(ROOT / "pnpm-lock.yaml"),
         "python": "3.12",
         "platform": PLATFORM if not a.no_deps else "code-only",
-        "resources": RESOURCES,
+        "resources": [*RESOURCES, "contracts/openapi.json（由 openapi.yaml 生成）"],
         "env": {"LEDGER_RESOURCE_DIR": "/var/task/resources"},
         "built_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }

@@ -110,3 +110,14 @@ test("飞书回调：1769 MB 且每 5 分钟预热（卡片 3 秒限制，FS-06�
     Targets: Match.arrayWith([Match.objectLike({ Input: JSON.stringify({ warmup: true }) })]),
   });
 });
+
+test("网站函数：1769 MB，且每 5 分钟同时预热多个实例", () => {
+  const fns = t.findResources("AWS::Lambda::Function");
+  for (const name of ["Api", "AuthAdmin"]) {
+    const f = Object.entries(fns).find(([id]) => id.startsWith(name) && !id.startsWith("AuthAdmin") === (name === "Api"));
+    if (!f || (f[1] as any).Properties.MemorySize !== 1769) throw new Error(`${name} 内存不是 1769`);
+  }
+  const rules = Object.values(t.findResources("AWS::Events::Rule")) as any[];
+  const counts = rules.map((r) => (r.Properties.Targets ?? []).length);
+  if (!counts.includes(4) || !counts.includes(2)) throw new Error("缺少 Api×4／AuthAdmin×2 预热规则");
+});

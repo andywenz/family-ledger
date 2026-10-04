@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from ledger.http.app import Runtime, handle_event
@@ -18,6 +19,8 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
         _runtime = build()
     if event.get("warmup"):
-        # 定时预热：只确保运行时已构建，避免飞书卡片回调遇到冷启动超过 3 秒（FS-06）
+        # 定时预热：只确保运行时已构建（飞书 3 秒限制、网站首屏并发请求）。
+        # hold_ms 让同一轮的多次预热占用不同实例，从而一次预热多个实例。
+        time.sleep(min(int(event.get("hold_ms", 0)), 2000) / 1000)
         return {"warm": True}
     return handle_event(event, _runtime)
