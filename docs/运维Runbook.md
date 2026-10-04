@@ -19,18 +19,22 @@
 2. unknown：可能已送达；1 小时内同 uuid 重试安全（平台去重）。超过窗口不自动重发，联系用户确认后由用户在网站处理候选。
 3. 交付状态从不影响入账；用户也可在网站「AI 帮我记」中处理同一批次。
 
-## D. 回滚
+## D. 回滚（2026-10-04 实测：单向约 35 秒）
 
-1. 选择上一个通过 CI 的 `release-<commit>` 制品，运行 deploy 工作流（门禁同样适用）。
+1. 选择上一个通过 CI 的 `release-<commit>` 制品，运行 deploy 工作流（门禁同样适用）。本机演练方式：`git worktree add <目录> <commit>` → 在该目录 `build_lambda.py` → `cdk deploy -c artifactZip=<目录>/dist/lambda.zip -c artifactManifest=<目录>/dist/manifest.json` → `curl /v1/health` 核对 commit／digest。
 2. 代码回滚不回滚数据：撤权、删除、已入账结果保持。若新版本写入了旧版本不认识的字段，先评估兼容性；不兼容时做前向修复而非回滚。
 
-## E. 恢复演练（候选目标 RPO≤24h、RTO≤24h，未实测）
+## E. 恢复演练（候选目标 RPO≤24h、RTO≤24h；2026-10-04 首次实测见下）
 
-1. ☁️ PITR 恢复主表到新表 `ledger-main-restore-<日期>`（不覆盖生产）。
+1. ☁️ PITR 恢复主表到新表 `ledger-restore-<日期>`（不覆盖生产）：`aws dynamodb restore-table-to-point-in-time --source-table-name <主表> --target-table-name <新表> --restore-date-time <UTC 时间> --billing-mode-override PAY_PER_REQUEST`。
+   - **指定明确时间点**，不要用 `--use-latest-restorable-time`：最新可恢复时间约落后实时 5 分钟，首次演练因此恢复到了初始化之前（只有币种），属预期行为但证据无效。
+   - 恢复表不带 Streams、PITR、标签与删除保护；只作核对或隔离环境使用，用完删除。
 2. 先重放删除日志表：对每条 `PURGED#` 标记，删除恢复表中对应账目与照片引用。
 3. 用恢复表启动隔离环境（独立 Lambda 环境变量），核对账目数量、照片 version 可读、当前成员关系与撤权。
 4. Cognito 密码不能从备份恢复：如需重建用户池，按 `USERS` 目录重建用户并重置临时密码。
 5. 记录实际耗时与数据时间点，作为 RTO／RPO 证据（OPS-10）。
+
+**2026-10-04 实测**：生产主表 101 项（2 账号、85 汇率组、5 币种，0 家庭／账目）。08:41:15Z 全表扫描摘要；恢复到同一时间点，3 分 39 秒变为 ACTIVE；逐项比较 101／101 一致、无缺失／多余／变化，内容摘要相同；演练表已删除。尚未演练：第 2 步删除日志重放（当前无删除记录）与第 3 步隔离环境启动。
 
 ## F. 费用告警
 
