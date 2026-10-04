@@ -33,5 +33,7 @@ export async function noHorizontalOverflow(page: Page) {
 }
 
 export async function shot(page: Page, name: string, project: string) {
+  // 只在显式要求时更新仓库中的截图证据（SAVE_SCREENSHOTS=1）；CI 不改工作区，避免构建门禁判为未提交修改
+  if (process.env.SAVE_SCREENSHOTS !== "1") return;
   await page.screenshot({ path: `../verification/evidence/d2-screens/${name}-${project}.png`, fullPage: true });
 }
