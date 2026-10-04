@@ -17,4 +17,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         from ledger.runtime import build
 
         _runtime = build()
+    if event.get("warmup"):
+        # 定时预热：只确保运行时已构建，避免飞书卡片回调遇到冷启动超过 3 秒（FS-06）
+        return {"warm": True}
     return handle_event(event, _runtime)

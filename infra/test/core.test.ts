@@ -100,3 +100,13 @@ test("首发初始化所需输出存在；Worker 只能调用选定模型（ADR-
   if (!policies.includes("foundation-model/amazon.nova-pro-v1:0")) throw new Error("Worker 未限定 Nova Pro ARN");
   if (policies.includes("nova-lite")) throw new Error("仍引用 Lite");
 });
+
+test("飞书回调：1769 MB 且每 5 分钟预热（卡片 3 秒限制，FS-06）", () => {
+  const fns = t.findResources("AWS::Lambda::Function");
+  const feishu = Object.entries(fns).find(([id]) => id.startsWith("FeishuCallback"));
+  if (!feishu || (feishu[1] as any).Properties.MemorySize !== 1769) throw new Error("FeishuCallback 内存不是 1769");
+  t.hasResourceProperties("AWS::Events::Rule", {
+    ScheduleExpression: "rate(5 minutes)",
+    Targets: Match.arrayWith([Match.objectLike({ Input: JSON.stringify({ warmup: true }) })]),
+  });
+});

@@ -95,3 +95,10 @@ def test_feishu_secret_parsing_tolerates_placeholder() -> None:
         k: "v" for k in ("app_id", "app_secret", "verification_token", "encrypt_key", "tenant_key")
     }
     assert _feishu_secrets(json.dumps(full)).app_id == "v"
+
+
+def test_warmup_event_returns_without_dispatch(runtime: Runtime) -> None:
+    from ledger.handlers import api
+
+    api._runtime = runtime
+    assert api.handler({"warmup": True}, None) == {"warm": True}

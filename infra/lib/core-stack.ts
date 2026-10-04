@@ -151,7 +151,8 @@ export class CoreStack extends Stack {
       });
     const api = fn("Api", "ledger.handlers.api.handler", 20);
     const authAdmin = fn("AuthAdmin", "ledger.handlers.api.handler", 20);
-    const feishuFn = fn("FeishuCallback", "ledger.handlers.api.handler", 10);
+    // 卡片回调须 3 秒内响应：1769 MB＝1 个完整 vCPU，缩短冷启动（2026-10-04 实测 512 MB 冷启动约 4.7 秒）
+    const feishuFn = fn("FeishuCallback", "ledger.handlers.api.handler", 10, 1769);
     const worker = fn("Worker", "ledger.handlers.worker.worker_handler", 120, 1024);
     const relay = fn("Relay", "ledger.handlers.worker.relay_handler", 60);
     const maintenance = fn("Maintenance", "ledger.handlers.maintenance.handler", 300);
@@ -183,6 +184,10 @@ export class CoreStack extends Stack {
 
     worker.addEventSource(new SqsEventSource(queue, { batchSize: 1, reportBatchItemFailures: true }));
     relay.addEventSource(new DynamoEventSource(table, { startingPosition: StartingPosition.LATEST, batchSize: 50, retryAttempts: 3 }));
+    new Rule(this, "FeishuWarmup", {
+      schedule: Schedule.rate(Duration.minutes(5)),
+      targets: [new LambdaFunction(feishuFn, { event: RuleTargetInput.fromObject({ warmup: true }) })],
+    });
     new Rule(this, "OutboxSweep", { schedule: Schedule.rate(Duration.minutes(5)), targets: [new LambdaFunction(relay)] });
     new Rule(this, "DailyMaintenance", {
       schedule: Schedule.cron({ minute: "17", hour: "14" }), // 奥克兰凌晨

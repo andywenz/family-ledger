@@ -62,7 +62,7 @@ def _go_time(epoch: float) -> str:
     from datetime import UTC, datetime, timedelta, timezone
 
     dt = datetime.fromtimestamp(epoch, UTC).astimezone(timezone(timedelta(hours=8)))
-    return dt.strftime("%Y-%m-%d %H:%M:%S.") + "052290112 +0800 CST "
+    return dt.strftime("%Y-%m-%d %H:%M:%S.") + "052290112 +0800 CST m=+3612.123456789"
 
 
 def _signed_with_ts(payload: dict, ts: str) -> tuple[dict[str, str], bytes]:
@@ -104,3 +104,12 @@ def test_unparseable_timestamp_rejected(ts: str) -> None:
     headers, raw = _signed_with_ts(VERIFY, ts)
     with pytest.raises(FeishuAuthError, match="时间戳无效"):
         open_envelope(raw, headers, LOCAL_SECRETS)
+
+
+@pytest.mark.parametrize("tail", ["", " CST", " CST ", " CST m=+3612.123456789", " CST m=-0.5"])
+def test_go_time_variants_parse(tail: str) -> None:
+    from ledger.adapters.feishu import _parse_timestamp
+
+    assert _parse_timestamp("2026-10-04 18:28:05.960910485 +0800" + tail) == pytest.approx(
+        1791109685.96091
+    )

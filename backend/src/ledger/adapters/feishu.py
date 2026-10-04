@@ -45,12 +45,15 @@ def signature(timestamp: str, nonce: str, encrypt_key: str, raw_body: bytes) -> 
     return hashlib.sha256((timestamp + nonce + encrypt_key).encode() + raw_body).hexdigest()
 
 
-_GO_TIME = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?:\.(\d+))? ([+-]\d{4})(?: \S+)?$")
+# 只解析开头的“日期 时间[.小数] 时区偏移”；
+# 其后可能有时区名与 Go 单调时钟读数（如 "CST m=+3612.1"），忽略
+_GO_TIME = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?:\.(\d+))? ([+-]\d{4})(?:\s|$)")
 
 
 def _parse_timestamp(ts: str) -> float | None:
-    """事件回调为 Unix 秒；卡片回调为 Go 时间字符串，如
-    '2026-10-04 18:23:46.052290112 +0800 CST '（2026-10-04 生产实测）。"""
+    """事件回调为 Unix 秒；卡片回调为 Go time.String()，如
+    '2026-10-04 18:23:46.052290112 +0800 CST m=+3612.1'
+    （2026-10-04 生产实测，末尾可能带单调时钟读数）。"""
     ts = ts.strip()
     if ts.isdigit():
         return float(ts)
@@ -72,7 +75,7 @@ def verify_request(
         raise FeishuAuthError("缺少签名头")
     sent_at = _parse_timestamp(ts)
     if sent_at is None:
-        raise FeishuAuthError(f"时间戳无效：{ts[:40]!r}")
+        raise FeishuAuthError(f"时间戳无效：{ts[:80]!r}")
     if abs((now or time.time()) - sent_at) > MAX_SKEW_S:
         raise FeishuAuthError("请求已过期")
     # 签名按原始头部字符串计算；网关可能去掉首尾空格，因此也接受去空格后的版本
