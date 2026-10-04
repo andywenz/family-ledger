@@ -200,7 +200,7 @@ export default function Dashboard() {
                       <td className="numeric">{money(e.display_amounts.cny)}</td>
                       <td className="note-cell">{e.note}{e.attachments.length > 0 && <span title="有照片"> 📎</span>}</td>
                       <td>{e.payment_method ? METHOD_LABEL[e.payment_method] : "—"}</td>
-                      <td>{e.created_by_display}{e.created_by_left && <small>（已离开）</small>}</td>
+                      <td>{e.created_by_display}{e.created_by_left && <small>（已离开）</small>}{e.source === "import" && <small>（历史导入）</small>}</td>
                       <td>
                         <div className="row-actions">
                           <button className="edit-row" onClick={() => setOpenEntry(e)} aria-label={`查看或编辑 ${e.note || e.category.leaf_name}`}><Icon name="edit" />{e.can_edit ? "编辑" : "查看"}</button>
