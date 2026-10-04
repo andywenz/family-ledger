@@ -388,3 +388,15 @@ class TestCards:
         bind(bot, w.member, bot.o("member"))
         binding = w.ctx.store.get(keys.user(w.member.user_id), "FEISHU")
         assert binding is not None and binding["status"] == "active"
+
+
+def test_endpoints_dispatch_by_event_type(bot: Bot) -> None:
+    """消息误投到卡片回调地址时仍按消息处理（生产首次联调时观察到）。"""
+    w = bot.w
+    bind(bot, w.member, bot.o("member"))
+    headers, raw = signed_request(
+        message_event(bot.o("member"), text="咖啡 6 纽币", message_id="om_swap")
+    )
+    assert feishu.handle_card(w.ctx, LOCAL_SECRETS, headers, raw) == {}
+    bot.work()
+    assert len(raw_items(w.ctx, w.fid, "JOB#")) == 1

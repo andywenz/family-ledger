@@ -180,8 +180,19 @@ def handle_event(
 ) -> dict[str, Any]:
     """验签解密后快速持久接收；不在请求内调用模型或飞书接口（FS-02／06）。"""
     body = open_envelope(raw_body, headers, secrets)  # FeishuAuthError → 401
+    return _dispatch(ctx, body)
+
+
+def _dispatch(ctx: AppContext, body: dict[str, Any]) -> dict[str, Any]:
+    """两个入口都按事件类型分派：后台把地址填反时消息与卡片仍各自正确处理。"""
     if body.get("type") == "url_verification":
         return {"challenge": body.get("challenge", "")}
+    if (body.get("header") or {}).get("event_type") == "card.action.trigger":
+        return _card_action(ctx, body)
+    return _receive_event(ctx, body)
+
+
+def _receive_event(ctx: AppContext, body: dict[str, Any]) -> dict[str, Any]:
     header = body["header"]
     now = ctx.clock()
     tx = Tx(ctx.store.table)
@@ -895,9 +906,10 @@ def handle_card(
     ctx: AppContext, secrets: FeishuSecrets, headers: dict[str, str], raw_body: bytes
 ) -> dict[str, Any]:
     """3 秒内同步完成并返回新卡片（ADR-0013 第 9 条）。身份只取 operator.open_id。"""
-    body = open_envelope(raw_body, headers, secrets)
-    if body.get("type") == "url_verification":  # 配置卡片回调地址时的验证
-        return {"challenge": body.get("challenge", "")}
+    return _dispatch(ctx, open_envelope(raw_body, headers, secrets))
+
+
+def _card_action(ctx: AppContext, body: dict[str, Any]) -> dict[str, Any]:
     header, event = body["header"], body["event"]
     open_id = (event.get("operator") or {}).get("open_id", "")
     action = event.get("action") or {}
