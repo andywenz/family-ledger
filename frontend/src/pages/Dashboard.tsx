@@ -87,7 +87,8 @@ export default function Dashboard() {
       <ErrorNotice error={error} onRetry={reload} />
       {s && (
         <>
-          <section className="summary-grid" aria-label="本月收支">
+          {/* 净支出、分类饼图、消费方式同一排（桌面）；窄屏自动换行（app.css .dashboard-top） */}
+          <section className="dashboard-top" aria-label="本月概览">
             <article className="card spending-hero">
               <div className="card-label">本月净支出 <Icon name="wallet" /></div>
               <div className="currency-kicker">NEW ZEALAND DOLLAR</div>
@@ -95,22 +96,6 @@ export default function Dashboard() {
               <div className="secondary-amount">合 CNY ¥ {money(s.totals.net_expense.cny)}</div>
               <div className="card-footnote"><span className="dot"></span>消费 ${money(s.totals.expense_gross.nzd)} · 退款 ${money(s.totals.refund.nzd)}</div>
             </article>
-            <article className="card regular-summary">
-              <div className="card-label">本月收入 <Icon name="income" /></div>
-              <div className="currency-kicker">NZD</div>
-              <div className="number"><small>$</small>{money(s.totals.income.nzd)}</div>
-              <div className="secondary-amount">合 CNY ¥ {money(s.totals.income.cny)}</div>
-              <div className="card-footnote">记下每一份努力与心意</div>
-            </article>
-            <article className="card regular-summary">
-              <div className="card-label">本月结余 <Icon name="leaf" /></div>
-              <div className="currency-kicker">NZD</div>
-              <div className="number"><small>$</small>{money(s.totals.balance.nzd)}</div>
-              <div className="secondary-amount">合 CNY ¥ {money(s.totals.balance.cny)}</div>
-              <div className="card-footnote">收入 − 净支出 · 不等于账户余额</div>
-            </article>
-          </section>
-          <section className="overview-grid">
             <article className="card">
               <div className="section-head"><h2>钱花在了哪里</h2><small>一级分类 · 合 NZD</small></div>
               <div className="chart-body">

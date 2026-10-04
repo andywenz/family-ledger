@@ -205,8 +205,12 @@ export default function AiEntry() {
       items: items.map((c) => ({ candidate_id: c.candidate_id, version: c.version, content_digest: c.content_digest })),
     }, { key }));
     if (r) {
-      toast.show(`已入账 ${r.entries.length} 笔`);
-      await batch.reload();
+      // 确认后直接回到“AI 帮我记”输入页；未确认的候选仍在右侧“未处理的识别”里
+      const left = (batch.data?.candidates ?? []).filter(
+        (c) => c.status !== "confirmed" && !items.some((x) => x.candidate_id === c.candidate_id),
+      ).length;
+      toast.show(left > 0 ? `已入账 ${r.entries.length} 笔；另有 ${left} 笔待确认，可在右侧继续` : `已入账 ${r.entries.length} 笔`);
+      setParams({}); setJob(null); setText(""); setPhoto(null);
       await batches.reload();
     } else if (confirm.error instanceof ApiError && confirm.error.code === "candidate_stale") {
       await batch.reload();

@@ -172,8 +172,15 @@ test("AI 识别→修改候选→确认入账（离线替身模型）", async ({
   await shot(page, "09-ai-candidates", project);
   await page.getByRole("button", { name: /确认并记账/ }).click();
   await expect(page.getByText("已入账 2 笔")).toBeVisible();
+  // 确认后直接回到输入页，无需再点“再记一条”
+  await expect(page.getByLabel("今天有什么开销？")).toHaveValue("");
+  await expect(page.getByRole("heading", { name: "待你确认" })).toHaveCount(0);
   await page.getByRole("link", { name: "月度总览" }).click();
   await expect(page.getByRole("cell", { name: "46.50", exact: true }).first()).toBeVisible();
+  // Dashboard 不再显示收入／结余卡片；净支出、分类、消费方式在同一区域
+  await expect(page.getByText("本月收入")).toHaveCount(0);
+  await expect(page.getByText("本月结余")).toHaveCount(0);
+  await expect(page.locator(".dashboard-top > .card")).toHaveCount(3);
   await noHorizontalOverflow(page);
 });
 

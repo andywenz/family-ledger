@@ -65,3 +65,11 @@
 .candidate-card .inline-check{margin:0;gap:10px}
 .candidate-card .inline-check h3{margin:0}
 .review-state{font-size:12px;color:#7a5418;background:#fff3df;border:1px solid #f0d6a8;border-radius:20px;padding:2px 10px}
+
+/* Dashboard 顶部：本月净支出｜钱花在了哪里｜消费方式（2026-10-05 用户要求，取代收入／结余卡片） */
+.dashboard-top{display:grid;grid-template-columns:minmax(240px,.85fr) minmax(0,1.45fr) minmax(0,1.1fr);gap:17px;margin-bottom:22px;align-items:stretch}
+.dashboard-top>.card{min-width:0}
+.dashboard-top .chart-body{gap:20px}
+@media(max-width:1280px){.dashboard-top{grid-template-columns:1fr 1fr}.dashboard-top .spending-hero{grid-column:1/-1;min-height:0}}
+@media(max-width:950px){.dashboard-top{grid-template-columns:1fr}}
+@media(max-width:650px){.dashboard-top{gap:13px}}
