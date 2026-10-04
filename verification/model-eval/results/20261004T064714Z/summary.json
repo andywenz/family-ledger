@@ -1,0 +1,144 @@
+{
+ "run_id": "20261004T064714Z",
+ "dry_run": false,
+ "region": "ap-southeast-2",
+ "prompt_version": "v2",
+ "output_mode": "tool",
+ "received_date": "2026-10-04",
+ "cases": 4,
+ "models": [
+  "amazon.nova-lite-v1:0"
+ ],
+ "prices": {
+  "amazon.nova-lite-v1:0": {
+   "input_per_m": "0.063",
+   "output_per_m": "0.252",
+   "vision": true,
+   "usagetype": "APS2-NovaLite-input-tokens / APS2-NovaLite-output-tokens",
+   "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/current/ap-southeast-2/index.json (publicationDate 2026-10-03T00:11:38Z)",
+   "verified_at": "2026-10-04"
+  }
+ },
+ "spend": {
+  "budget_usd": "0.05",
+  "known_usd": "0.001025388",
+  "unknown_reserve_usd": "0",
+  "calls": 4,
+  "unknown_usage_calls": 0,
+  "throttled_retries": 0,
+  "requests_per_minute": 8,
+  "stopped_by_budget": false
+ },
+ "by_model": {
+  "amazon.nova-lite-v1:0": {
+   "text": {
+    "cases_run": 4,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 1,
+    "metrics": {
+     "amount": {
+      "correct": 4,
+      "total": 5,
+      "rate": 0.8
+     },
+     "category_parent": {
+      "correct": 4,
+      "total": 5,
+      "rate": 0.8
+     },
+     "count_ok": {
+      "correct": 3,
+      "total": 4,
+      "rate": 0.75
+     },
+     "currency": {
+      "correct": 4,
+      "total": 5,
+      "rate": 0.8
+     },
+     "date": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "method": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "type": {
+      "correct": 4,
+      "total": 5,
+      "rate": 0.8
+     }
+    },
+    "latency_ms_p50": 889,
+    "latency_ms_max": 1521,
+    "known_cost_usd": "0.001025388",
+    "unknown_usage_calls": 0,
+    "input_tokens": 13680,
+    "output_tokens": 649
+   },
+   "image": {
+    "cases_run": 0,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 0,
+    "metrics": {},
+    "latency_ms_p50": null,
+    "latency_ms_max": null,
+    "known_cost_usd": "0",
+    "unknown_usage_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   },
+   "all": {
+    "cases_run": 4,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 1,
+    "metrics": {
+     "amount": {
+      "correct": 4,
+      "total": 5,
+      "rate": 0.8
+     },
+     "category_parent": {
+      "correct": 4,
+      "total": 5,
+      "rate": 0.8
+     },
+     "count_ok": {
+      "correct": 3,
+      "total": 4,
+      "rate": 0.75
+     },
+     "currency": {
+      "correct": 4,
+      "total": 5,
+      "rate": 0.8
+     },
+     "date": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "method": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "type": {
+      "correct": 4,
+      "total": 5,
+      "rate": 0.8
+     }
+    },
+    "latency_ms_p50": 889,
+    "latency_ms_max": 1521,
+    "known_cost_usd": "0.001025388",
+    "unknown_usage_calls": 0,
+    "input_tokens": 13680,
+    "output_tokens": 649
+   }
+  }
+ }
+}

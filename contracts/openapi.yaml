@@ -1,0 +1,3112 @@
+openapi: 3.1.0
+info:
+  title: 小家账本 API
+  version: 0.1.0
+  description: |
+    家庭记账本用户 API 与飞书回调。D0 契约基线（2026-10-04）。
+
+    通用规则（工程契约 §2，ADR-0008／0010）：
+    - 所有 `/v1` 业务接口需要 `Authorization: Bearer <access token>`；服务端在每次请求与提交事务时检查账号状态、会话边界与家庭成员关系。
+    - 所有写操作（POST／PATCH／DELETE，认证入口与飞书回调除外）必须携带 `Idempotency-Key`。同 key 同指纹返回原结果；同 key 不同正文返回 409 `idempotency_key_reused`。响应丢失时先 `GET .../actions/{key}`，不得换 key 重试。
+    - 修改、删除、恢复、确认携带 `expected_version`；不匹配返回 409 `version_conflict` 及调用者有权查看的当前版本。
+    - 金额一律为十进制字符串；`*_minor` 为整数分值。前端不得自行累计金融数值。
+    - 时间为 UTC ISO-8601；`business_date` 为家庭时区日历日期 `YYYY-MM-DD`。
+    - 扩展字段：`x-authz` 权限要求；`x-idempotent` 是否需要 Idempotency-Key；`x-versioned` 是否需要 expected_version；`x-acceptance` 关联验收 ID。
+
+    `x-authz` 取值：`public`、`authenticated`（已登录且无需改密）、`pre_auth`（认证流程）、`self`、`member`、`family_admin`、`owner_or_admin`（本人或家庭管理员）、`candidate_owner`、`system_admin`、`feishu_signature`。
+servers:
+  - url: https://api.ledger.example.com/v1
+    description: 生产（实际域名在私人配置中）
+  - url: http://localhost:8787/v1
+    description: 本地开发（LEDGER_ENV=local）
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: auth
+  - name: me
+  - name: admin
+  - name: families
+  - name: entries
+  - name: categories
+  - name: rates
+  - name: attachments
+  - name: ai
+  - name: feishu
+  - name: ops
+
+paths:
+  /health:
+    get:
+      tags: [ops]
+      operationId: getHealth
+      summary: 健康检查与部署版本读回
+      security: []
+      x-authz: public
+      x-idempotent: false
+      x-acceptance: [OPS-08]
+      responses:
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 正常
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  # ───────────────────────── 认证 ─────────────────────────
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: 登录名＋密码登录
+      description: 登录名不区分大小写，经应用映射为内部 ID 后交给身份服务。首次或重置后登录返回改密挑战。密码不写日志。成功时以 Secure／HttpOnly cookie 下发 refresh token，并下发 CSRF cookie。
+      security: []
+      x-authz: pre_auth
+      x-idempotent: false
+      x-acceptance: [AUTH-01, AUTH-02, AUTH-03]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 登录成功或需要改密
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResult" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /auth/challenge:
+    post:
+      tags: [auth]
+      operationId: respondChallenge
+      summary: 完成首次登录／重置后的强制改密
+      security: []
+      x-authz: pre_auth
+      x-idempotent: false
+      x-acceptance: [AUTH-01, AUTH-03]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChallengeRequest" }
+      responses:
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 改密成功并登录
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResult" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /auth/refresh:
+    post:
+      tags: [auth]
+      operationId: refresh
+      summary: 用 refresh cookie 换取新的 access token
+      description: 校验 Origin 与 `X-CSRF-Token`（双提交 cookie）。账号会话边界之前签发的 refresh 拒绝。
+      security: []
+      x-authz: pre_auth
+      x-idempotent: false
+      x-acceptance: [AUTH-03]
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 新 access token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResult" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: 退出并撤销当前 refresh session
+      security: []
+      x-authz: pre_auth
+      x-idempotent: false
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        default: { $ref: "#/components/responses/Default" }
+        "204": { description: 已退出 }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # ───────────────────────── 自己账号 ─────────────────────────
+  /me:
+    get:
+      tags: [me]
+      operationId: getMe
+      summary: 当前账号、所属家庭与飞书绑定状态
+      x-authz: authenticated
+      x-idempotent: false
+      responses:
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 当前账号
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /me/profile:
+    patch:
+      tags: [me]
+      operationId: updateMyProfile
+      summary: 修改显示名（ADR-0005）
+      x-authz: self
+      x-idempotent: true
+      x-versioned: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [display_name, expected_version]
+              properties:
+                display_name: { $ref: "#/components/schemas/DisplayName" }
+                expected_version: { $ref: "#/components/schemas/Version" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /me/login-name:
+    patch:
+      tags: [me]
+      operationId: changeLoginName
+      summary: 修改登录名
+      description: 唯一性预留→更新身份服务别名→完成映射；跨服务步骤以 rename 操作记录。可能同步完成（200）或返回 pending（202），pending 期间用旧登录名仍可登录。
+      x-authz: self
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [AUTH-02]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [new_login_name, expected_version]
+              properties:
+                new_login_name: { $ref: "#/components/schemas/LoginName" }
+                expected_version: { $ref: "#/components/schemas/Version" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已完成
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RenameOperation" }
+        "202":
+          description: 处理中
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RenameOperation" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /me/login-name/operations/{op_id}:
+    get:
+      tags: [me]
+      operationId: getRenameOperation
+      summary: 查询改名操作进度
+      x-authz: self
+      x-idempotent: false
+      x-acceptance: [AUTH-02]
+      parameters:
+        - name: op_id
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Id" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 操作状态
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RenameOperation" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /me/password:
+    post:
+      tags: [me]
+      operationId: changeMyPassword
+      summary: 修改密码；成功后撤销其他会话并暂停飞书写入授权直至重新验证
+      x-authz: self
+      x-idempotent: true
+      x-acceptance: [AUTH-03]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string, writeOnly: true, minLength: 1, maxLength: 256 }
+                new_password: { type: string, writeOnly: true, minLength: 10, maxLength: 256 }
+      responses:
+        default: { $ref: "#/components/responses/Default" }
+        "204": { description: 已修改，返回新的 refresh cookie }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /me/invitations:
+    get:
+      tags: [me]
+      operationId: listMyInvitations
+      summary: 我收到的待处理邀请
+      x-authz: self
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 邀请列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Invitation" }
+  /me/actions/{action_id}:
+    get:
+      tags: [me]
+      operationId: getMyAction
+      summary: 查询账号级动作（创建家庭、改名、改资料等）回执
+      x-authz: self
+      x-idempotent: false
+      x-acceptance: [OPS-01]
+      parameters:
+        - $ref: "#/components/parameters/ActionId"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已提交的回执
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActionReceipt" }
+        "404":
+          description: 未提交（可用同一 key 与同一正文安全重试）
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /me/feishu-binding-code:
+    post:
+      tags: [me, feishu]
+      operationId: createFeishuBindingCode
+      summary: 生成一次性飞书绑定码（10 分钟有效）
+      x-authz: self
+      x-idempotent: true
+      x-acceptance: [FS-01]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [default_family_id]
+              properties:
+                default_family_id: { $ref: "#/components/schemas/Id" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "201":
+          description: 绑定码（仅本次返回明文）
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, expires_at]
+                properties:
+                  code: { type: string, pattern: "^[A-Z0-9]{8}$" }
+                  expires_at: { $ref: "#/components/schemas/Timestamp" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /me/feishu-binding:
+    patch:
+      tags: [me, feishu]
+      operationId: updateFeishuBinding
+      summary: 修改飞书默认家庭
+      x-authz: self
+      x-idempotent: true
+      x-versioned: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [default_family_id, expected_version]
+              properties:
+                default_family_id: { $ref: "#/components/schemas/Id" }
+                expected_version: { $ref: "#/components/schemas/Version" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeishuBinding" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [me, feishu]
+      operationId: deleteFeishuBinding
+      summary: 解除飞书绑定
+      x-authz: self
+      x-idempotent: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "204": { description: 已解除 }
+
+  # ───────────────────────── 系统管理 ─────────────────────────
+  /admin/users:
+    get:
+      tags: [admin]
+      operationId: listUsers
+      summary: 全站账号列表（不含家庭账目）
+      x-authz: system_admin
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 账号列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminUser" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin]
+      operationId: createUser
+      summary: 创建个人账号；返回一次性临时密码
+      x-authz: system_admin
+      x-idempotent: true
+      x-acceptance: [AUTH-01, AUTH-04]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [login_name, display_name]
+              properties:
+                login_name: { $ref: "#/components/schemas/LoginName" }
+                display_name: { $ref: "#/components/schemas/DisplayName" }
+                is_system_admin: { type: boolean, default: false }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "201":
+          description: 已创建。临时密码仅此响应返回一次，重放返回 `temporary_password_redacted`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TemporaryPasswordResult" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /admin/users/{uid}:
+    patch:
+      tags: [admin]
+      operationId: updateUserStatus
+      summary: 停用或启用账号（停用立即使会话与飞书授权失效）
+      x-authz: system_admin
+      x-idempotent: true
+      x-versioned: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status, expected_version]
+              properties:
+                status: { type: string, enum: [active, disabled] }
+                expected_version: { $ref: "#/components/schemas/Version" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUser" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /admin/users/{uid}/reset-password:
+    post:
+      tags: [admin]
+      operationId: resetUserPassword
+      summary: 重置为临时密码；旧会话与飞书写入授权失效
+      x-authz: system_admin
+      x-idempotent: true
+      x-acceptance: [AUTH-03, AUTH-04]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 临时密码仅此响应返回一次
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TemporaryPasswordResult" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /admin/currencies:
+    post:
+      tags: [admin, rates]
+      operationId: createGlobalCurrency
+      summary: 新增全局币种元数据（ADR-0004）
+      x-authz: system_admin
+      x-idempotent: true
+      x-acceptance: [FX-03]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Currency" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Currency" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /admin/costs:
+    get:
+      tags: [admin, ops]
+      operationId: getCosts
+      summary: 本系统费用：应用估算、未知 usage、账单同步值分开展示
+      x-authz: system_admin
+      x-idempotent: false
+      x-acceptance: [OPS-05, OPS-06]
+      parameters:
+        - $ref: "#/components/parameters/MonthQuery"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 月度费用
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CostSummary" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/alerts:
+    get:
+      tags: [admin, ops]
+      operationId: listAlerts
+      summary: 预算告警与交付状态
+      x-authz: system_admin
+      x-idempotent: false
+      x-acceptance: [OPS-05, OPS-06]
+      parameters:
+        - $ref: "#/components/parameters/MonthQuery"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 告警列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Alert" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # ───────────────────────── 家庭与成员 ─────────────────────────
+  /families:
+    get:
+      tags: [families]
+      operationId: listFamilies
+      summary: 当前账号所属家庭
+      x-authz: authenticated
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 家庭列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/FamilySummary" }
+    post:
+      tags: [families]
+      operationId: createFamily
+      summary: 创建家庭；创建者成为家庭管理员，按模板生成分类目录
+      x-authz: authenticated
+      x-idempotent: true
+      x-acceptance: [AUTH-05]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 40 }
+                timezone: { type: string, default: Pacific/Auckland, maxLength: 64 }
+                default_currency: { $ref: "#/components/schemas/CurrencyCode" }
+                default_payment_method: { $ref: "#/components/schemas/PaymentMethod" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Family" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /families/{fid}:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [families]
+      operationId: getFamily
+      x-authz: member
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 家庭
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Family" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    patch:
+      tags: [families]
+      operationId: renameFamily
+      x-authz: family_admin
+      x-idempotent: true
+      x-versioned: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, expected_version]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 40 }
+                expected_version: { $ref: "#/components/schemas/Version" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Family" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /families/{fid}/config:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [families]
+      operationId: getFamilyConfig
+      x-authz: member
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 家庭默认值
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyConfig" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    patch:
+      tags: [families]
+      operationId: updateFamilyConfig
+      summary: 修改默认币种、默认消费方式与时区
+      x-authz: family_admin
+      x-idempotent: true
+      x-versioned: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expected_version]
+              properties:
+                default_currency: { $ref: "#/components/schemas/CurrencyCode" }
+                default_payment_method: { $ref: "#/components/schemas/PaymentMethod" }
+                timezone: { type: string, maxLength: 64 }
+                expected_version: { $ref: "#/components/schemas/Version" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyConfig" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /families/{fid}/members:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [families]
+      operationId: listMembers
+      summary: 成员列表（含已离开成员的显示名，用于历史显示）
+      x-authz: member
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 成员
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Member" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /families/{fid}/members/{uid}:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/UserId"
+    patch:
+      tags: [families]
+      operationId: changeMemberRole
+      summary: 授予或撤销家庭管理员；不能降级最后一名管理员
+      x-authz: family_admin
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [AUTH-05]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role, expected_version]
+              properties:
+                role: { $ref: "#/components/schemas/FamilyRole" }
+                expected_version: { $ref: "#/components/schemas/Version" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Member" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [families]
+      operationId: removeMember
+      summary: 移除成员；历史账目保留，其访问立即失效
+      x-authz: family_admin
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [AUTH-05, AUTH-08, AUTH-09]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ExpectedVersionQuery"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "204": { description: 已移除 }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /families/{fid}/invitations:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [families]
+      operationId: listFamilyInvitations
+      x-authz: family_admin
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 邀请列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Invitation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [families]
+      operationId: inviteMember
+      summary: 按登录名邀请已存在账号（7 天有效）。不存在的登录名与已是成员返回同一 422，避免枚举账号
+      x-authz: family_admin
+      x-idempotent: true
+      x-acceptance: [AUTH-05]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [login_name, role]
+              properties:
+                login_name: { $ref: "#/components/schemas/LoginName" }
+                role: { $ref: "#/components/schemas/FamilyRole" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "201":
+          description: 已邀请
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invitation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /families/{fid}/invitations/{iid}:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/InvitationId"
+    delete:
+      tags: [families]
+      operationId: revokeInvitation
+      x-authz: family_admin
+      x-idempotent: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "204": { description: 已撤销 }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /families/{fid}/invitations/{iid}/accept:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/InvitationId"
+    post:
+      tags: [families]
+      operationId: acceptInvitation
+      summary: 被邀请人接受邀请
+      x-authz: self
+      x-idempotent: true
+      x-acceptance: [AUTH-05]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已加入
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilySummary" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "410": { $ref: "#/components/responses/Gone" }
+  /families/{fid}/invitations/{iid}/decline:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/InvitationId"
+    post:
+      tags: [families]
+      operationId: declineInvitation
+      x-authz: self
+      x-idempotent: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "204": { description: 已拒绝 }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # ───────────────────────── 账目与统计 ─────────────────────────
+  /families/{fid}/dashboard:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [entries]
+      operationId: getDashboard
+      summary: 月度汇总（服务端全月计算，与清单／导出同一筛选）
+      x-authz: member
+      x-idempotent: false
+      x-acceptance: [ACC-04, ACC-05, ACC-06, ACC-07, ACC-08, ACC-10, ACC-11, CAT-01]
+      parameters:
+        - $ref: "#/components/parameters/MonthRequired"
+        - $ref: "#/components/parameters/FilterCreatedBy"
+        - $ref: "#/components/parameters/FilterType"
+        - $ref: "#/components/parameters/FilterCategory"
+        - $ref: "#/components/parameters/FilterPaymentMethod"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 月度汇总
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dashboard" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /families/{fid}/entries:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [entries]
+      operationId: listEntries
+      summary: 月账目清单；业务日期倒序，同日按创建时间、ID 稳定排序
+      x-authz: member
+      x-idempotent: false
+      x-acceptance: [ACC-04, ACC-05]
+      parameters:
+        - $ref: "#/components/parameters/MonthRequired"
+        - $ref: "#/components/parameters/FilterCreatedBy"
+        - $ref: "#/components/parameters/FilterType"
+        - $ref: "#/components/parameters/FilterCategory"
+        - $ref: "#/components/parameters/FilterPaymentMethod"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 一页账目
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EntryPage" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    post:
+      tags: [entries]
+      operationId: createEntry
+      summary: 手工创建正式账目（含退款）
+      x-authz: member
+      x-idempotent: true
+      x-acceptance: [ACC-01, ACC-02, ACC-03, ACC-09, ACC-15, FX-01, FX-02, CAT-02, CAT-04, AUTH-07]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EntryCreate" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "201":
+          description: 已入账
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /families/{fid}/entries/preview:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    post:
+      tags: [entries]
+      operationId: previewEntry
+      summary: 提交前折算预览（不写入；不需要 Idempotency-Key）
+      x-authz: member
+      x-idempotent: false
+      x-acceptance: [ACC-02, FX-01, FX-02]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/EntryCreate"
+                - type: object
+                  additionalProperties: false
+                  required: [entry_id, patch]
+                  properties:
+                    entry_id: { $ref: "#/components/schemas/Id" }
+                    patch: { $ref: "#/components/schemas/EntryPatch" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 折算预览
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FxPreview" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /families/{fid}/entries/{eid}:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/EntryId"
+    get:
+      tags: [entries]
+      operationId: getEntry
+      x-authz: member
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 账目
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [entries]
+      operationId: updateEntry
+      summary: 修改同一账目（ID 不变）；快照规则见需求 4.3，类型规则见 ADR-0006
+      x-authz: owner_or_admin
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [ACC-12, ACC-13, ACC-14, AUTH-06, FX-04]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EntryPatch" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+    delete:
+      tags: [entries]
+      operationId: deleteEntry
+      summary: 移入回收站（30 天可恢复）。有关联退款时必须 `with_refunds=true` 一并删除
+      x-authz: owner_or_admin
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [ACC-14, ACC-16, AUTH-06]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ExpectedVersionQuery"
+        - name: with_refunds
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已移入回收站
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeleteResult" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /families/{fid}/entries/{eid}/restore:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/EntryId"
+    post:
+      tags: [entries]
+      operationId: restoreEntry
+      summary: 从回收站恢复（30 天内；退款需原消费有效且额度充足）
+      x-authz: owner_or_admin
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [ACC-16]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expected_version]
+              properties:
+                expected_version: { $ref: "#/components/schemas/Version" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已恢复
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "410": { $ref: "#/components/responses/Gone" }
+  /families/{fid}/trash:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [entries]
+      operationId: listTrash
+      summary: 回收站（按删除时间倒序）
+      x-authz: member
+      x-idempotent: false
+      x-acceptance: [ACC-16]
+      parameters:
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 回收站项
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EntryPage" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /families/{fid}/exports:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    post:
+      tags: [entries]
+      operationId: createExport
+      summary: 导出当前筛选范围为 CSV／XLSX（公式注入防护，含折算值与汇率日期）
+      x-authz: member
+      x-idempotent: true
+      x-acceptance: [ACC-05, ACC-17, AUTH-07]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [format, month]
+              properties:
+                format: { type: string, enum: [csv, xlsx] }
+                month: { $ref: "#/components/schemas/Month" }
+                filters: { $ref: "#/components/schemas/EntryFilters" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "202":
+          description: 导出任务已接收
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExportJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /families/{fid}/exports/{jid}:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/JobId"
+    get:
+      tags: [entries]
+      operationId: getExport
+      summary: 导出状态；完成时返回 5 分钟有效下载链接（每次签发前重新检查成员关系）
+      x-authz: member
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 导出任务
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExportJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /families/{fid}/actions/{action_id}:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/ActionId"
+    get:
+      tags: [entries]
+      operationId: getFamilyAction
+      summary: 查询本人在该家庭的动作回执（强一致）
+      description: 404 表示该 key 尚未提交，可用同一 key 与同一正文重试；5xx／超时表示未知，不能改用新 key。
+      x-authz: member
+      x-idempotent: false
+      x-acceptance: [OPS-01, OPS-02, FS-07]
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已提交的回执
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActionReceipt" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: 未提交
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  # ───────────────────────── 分类 ─────────────────────────
+  /families/{fid}/categories:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [categories]
+      operationId: listCategories
+      summary: 家庭分类目录（两级树，含 kind、状态、重定向与使用计数）
+      x-authz: member
+      x-idempotent: false
+      parameters:
+        - name: include_inactive
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 分类目录
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CategoryTree" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [categories]
+      operationId: createCategory
+      summary: 新增一级或二级分类
+      x-authz: family_admin
+      x-idempotent: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, name]
+              properties:
+                kind: { $ref: "#/components/schemas/CategoryKind" }
+                parent_id:
+                  description: 省略为一级分类；提供则为该一级下的二级（叶子），kind 必须一致
+                  $ref: "#/components/schemas/Id"
+                name: { $ref: "#/components/schemas/CategoryName" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /families/{fid}/categories/{cid}:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/CategoryId"
+    patch:
+      tags: [categories]
+      operationId: updateCategory
+      summary: 改名、移动二级分类（禁止跨 kind）、排序、停用／启用
+      x-authz: family_admin
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [CAT-01, CAT-02, CAT-03]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expected_version]
+              properties:
+                name: { $ref: "#/components/schemas/CategoryName" }
+                parent_id: { $ref: "#/components/schemas/Id" }
+                sort: { type: integer, minimum: 0, maximum: 9999 }
+                status: { type: string, enum: [active, disabled] }
+                expected_version: { $ref: "#/components/schemas/Version" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+    delete:
+      tags: [categories]
+      operationId: deleteCategory
+      summary: 删除未使用的分类；已使用返回 409 category_in_use
+      x-authz: family_admin
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [CAT-02]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ExpectedVersionQuery"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "204": { description: 已删除 }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /families/{fid}/categories/{cid}/merge:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/CategoryId"
+    post:
+      tags: [categories]
+      operationId: mergeCategory
+      summary: 把叶子分类合并（重定向）到同 kind 的有效叶子；源分类停用
+      x-authz: family_admin
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [CAT-02, CAT-03]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [target_id, expected_version]
+              properties:
+                target_id: { $ref: "#/components/schemas/Id" }
+                expected_version: { $ref: "#/components/schemas/Version" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已合并
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  # ───────────────────────── 币种与汇率 ─────────────────────────
+  /currencies:
+    get:
+      tags: [rates]
+      operationId: listGlobalCurrencies
+      summary: 全局币种元数据
+      x-authz: authenticated
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 币种
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Currency" }
+  /families/{fid}/currencies:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [rates]
+      operationId: listFamilyCurrencies
+      summary: 本家庭启用的币种
+      x-authz: member
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 币种
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Currency" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [rates]
+      operationId: enableFamilyCurrency
+      summary: 在本家庭启用全局币种
+      x-authz: family_admin
+      x-idempotent: true
+      x-acceptance: [FX-03]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code: { $ref: "#/components/schemas/CurrencyCode" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "201":
+          description: 已启用
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Currency" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /families/{fid}/rates:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [rates]
+      operationId: resolveRates
+      summary: 解析某业务日期本家庭可用的完整汇率组（ADR-0004）
+      x-authz: member
+      x-idempotent: false
+      x-acceptance: [FX-01, FX-02]
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/BusinessDate" }
+        - name: currencies
+          in: query
+          required: false
+          description: 逗号分隔；省略为家庭全部启用币种
+          schema: { type: string, maxLength: 200 }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 汇率组或待补汇率
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResolvedRates" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /families/{fid}/rates/manual:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [rates]
+      operationId: listManualRates
+      x-authz: member
+      x-idempotent: false
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/BusinessDate" }
+        - name: to
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/BusinessDate" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 本家庭修正／补录值
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/ManualRate" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [rates]
+      operationId: putManualRate
+      summary: 补录或修正某日某币种的 USD 基准值（不改写已入账快照）
+      x-authz: family_admin
+      x-idempotent: true
+      x-acceptance: [FX-02, FX-03, FX-04]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [date, currency, usd_value, reason]
+              properties:
+                date: { $ref: "#/components/schemas/BusinessDate" }
+                currency: { $ref: "#/components/schemas/CurrencyCode" }
+                usd_value: { $ref: "#/components/schemas/RateValue" }
+                reason: { type: string, minLength: 1, maxLength: 200 }
+                expected_revision:
+                  description: 修正已有值时必填
+                  type: integer
+                  minimum: 1
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "201":
+          description: 已保存
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ManualRate" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /families/{fid}/rates/recompute:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    post:
+      tags: [rates]
+      operationId: createRecomputePreview
+      summary: 发起显式重算预览（异步），列出涉及记录与汇总差异
+      x-authz: family_admin
+      x-idempotent: true
+      x-acceptance: [FX-05]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [date_from, date_to]
+              properties:
+                date_from: { $ref: "#/components/schemas/BusinessDate" }
+                date_to: { $ref: "#/components/schemas/BusinessDate" }
+                currencies:
+                  type: array
+                  maxItems: 20
+                  items: { $ref: "#/components/schemas/CurrencyCode" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "202":
+          description: 预览任务
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecomputeJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /families/{fid}/rates/recompute/{jid}:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/JobId"
+    get:
+      tags: [rates]
+      operationId: getRecompute
+      x-authz: family_admin
+      x-idempotent: false
+      x-acceptance: [FX-05]
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 重算任务
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecomputeJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /families/{fid}/rates/recompute/{jid}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/JobId"
+    post:
+      tags: [rates]
+      operationId: confirmRecompute
+      summary: 确认预览范围并执行（分片事务；失败可沿同一任务继续）
+      x-authz: family_admin
+      x-idempotent: true
+      x-acceptance: [FX-05]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [preview_digest]
+              properties:
+                preview_digest: { $ref: "#/components/schemas/Digest" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "202":
+          description: 执行中
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecomputeJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  # ───────────────────────── 照片凭证 ─────────────────────────
+  /families/{fid}/attachments/upload-intents:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    post:
+      tags: [attachments]
+      operationId: createUploadIntent
+      summary: 创建上传意图；返回限定键／大小／类型的短期 S3 POST 表单
+      x-authz: member
+      x-idempotent: true
+      x-acceptance: [OPS-04]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [content_type, bytes, sha256]
+              properties:
+                content_type: { type: string, enum: [image/jpeg, image/png, image/webp] }
+                bytes: { type: integer, minimum: 1, maximum: 10485760 }
+                sha256: { $ref: "#/components/schemas/Digest" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "201":
+          description: 上传意图
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UploadIntent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "415": { $ref: "#/components/responses/UnsupportedMedia" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /families/{fid}/attachments/{aid}/complete:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/AttachmentId"
+    post:
+      tags: [attachments]
+      operationId: completeUpload
+      summary: 校验已上传对象（真实格式、像素、摘要）后开放关联与识别
+      x-authz: member
+      x-idempotent: true
+      x-acceptance: [OPS-04]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 校验结果（ready 或 rejected）
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Attachment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /families/{fid}/attachments/{aid}/download:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/AttachmentId"
+    get:
+      tags: [attachments]
+      operationId: getAttachmentUrl
+      summary: 签发 60 秒有效的查看链接（签发前检查当前成员关系）
+      x-authz: member
+      x-idempotent: false
+      x-acceptance: [AUTH-07, AUTH-09]
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 短期链接
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expires_at]
+                properties:
+                  url: { type: string, format: uri }
+                  expires_at: { $ref: "#/components/schemas/Timestamp" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ───────────────────────── AI 识别与候选 ─────────────────────────
+  /families/{fid}/recognition-jobs:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    post:
+      tags: [ai]
+      operationId: createRecognitionJob
+      summary: 提交文字／文字＋一张照片进行识别（持久任务，不入账）
+      x-authz: member
+      x-idempotent: true
+      x-acceptance: [AI-01, AI-02, AI-03, AI-07, OPS-03]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                text: { type: string, minLength: 1, maxLength: 300 }
+                attachment_id: { $ref: "#/components/schemas/Id" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "202":
+          description: 已接收
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecognitionJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /families/{fid}/recognition-jobs/{jid}:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/JobId"
+    get:
+      tags: [ai]
+      operationId: getRecognitionJob
+      summary: 识别任务状态（仅发起人）
+      x-authz: candidate_owner
+      x-idempotent: false
+      x-acceptance: [AI-05, AI-08]
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 任务
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecognitionJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /families/{fid}/batches:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    get:
+      tags: [ai]
+      operationId: listMyBatches
+      summary: 我在该家庭的候选批次（含飞书来源）
+      x-authz: member
+      x-idempotent: false
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, closed, expired, cancelled] }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 批次列表（不含候选正文）
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/BatchSummary" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /families/{fid}/batches/{bid}:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/BatchId"
+    get:
+      tags: [ai]
+      operationId: getBatch
+      x-authz: candidate_owner
+      x-idempotent: false
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 批次及候选
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Batch" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /families/{fid}/batches/{bid}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/BatchId"
+    post:
+      tags: [ai]
+      operationId: cancelBatch
+      summary: 取消整批（未确认候选不再可确认）
+      x-authz: candidate_owner
+      x-idempotent: true
+      x-versioned: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expected_version]
+              properties:
+                expected_version: { $ref: "#/components/schemas/Version" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已取消
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Batch" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /families/{fid}/batches/{bid}/candidates/{cid}:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/BatchId"
+      - $ref: "#/components/parameters/CandidateId"
+    patch:
+      tags: [ai]
+      operationId: updateCandidate
+      summary: 人工修改候选字段（白名单），生成新版本
+      x-authz: candidate_owner
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [AI-04, FS-04, CAT-03, AUTH-10]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CandidatePatch" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 新版本
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Candidate" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "410": { $ref: "#/components/responses/Gone" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+    delete:
+      tags: [ai]
+      operationId: deleteCandidate
+      x-authz: candidate_owner
+      x-idempotent: true
+      x-versioned: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ExpectedVersionQuery"
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "204": { description: 已删除 }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /families/{fid}/batches/{bid}/candidates/{cid}/split:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/BatchId"
+      - $ref: "#/components/parameters/CandidateId"
+    post:
+      tags: [ai]
+      operationId: splitCandidate
+      summary: 把一条候选拆成 2–10 条子候选（原币合计必须相等；ADR-0003）
+      x-authz: candidate_owner
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [AI-04, ACC-15]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expected_version, parts]
+              properties:
+                expected_version: { $ref: "#/components/schemas/Version" }
+                parts:
+                  type: array
+                  minItems: 2
+                  maxItems: 10
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [amount]
+                    properties:
+                      amount: { $ref: "#/components/schemas/Amount" }
+                      leaf_category_id: { $ref: "#/components/schemas/Id" }
+                      note: { $ref: "#/components/schemas/Note" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 拆分后的批次
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Batch" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /families/{fid}/batches/{bid}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+      - $ref: "#/components/parameters/BatchId"
+    post:
+      tags: [ai]
+      operationId: confirmCandidates
+      summary: 确认候选并入账（≤10 条，同一事务全部提交或全部不提交；逐条确认即长度 1）
+      description: 每项绑定展示的候选版本与 content_digest（覆盖字段、汇率修订、分类 manifest 版本）。任一不符则整批拒绝并返回最新版本。
+      x-authz: candidate_owner
+      x-idempotent: true
+      x-versioned: true
+      x-acceptance: [AI-04, FS-05, CAT-03, AUTH-08, AUTH-10, OPS-03]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  uniqueItems: true
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [candidate_id, version, content_digest]
+                    properties:
+                      candidate_id: { $ref: "#/components/schemas/Id" }
+                      version: { $ref: "#/components/schemas/Version" }
+                      content_digest: { $ref: "#/components/schemas/Digest" }
+      responses:
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已入账
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConfirmResult" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "410": { $ref: "#/components/responses/Gone" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  # ───────────────────────── 飞书回调 ─────────────────────────
+  /integrations/feishu/events:
+    post:
+      tags: [feishu]
+      operationId: feishuEvents
+      summary: 飞书事件订阅回调（URL 验证、私聊消息）
+      description: 不使用用户 JWT。验签／解密／防重放、校验应用与租户、仅处理私聊；未绑定账号不调用模型、不下载资源。精确协议在 D4 依官方文档核实后锁定。
+      security: []
+      x-authz: feishu_signature
+      x-idempotent: false
+      x-acceptance: [FS-01, FS-02, FS-03, FS-06]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, description: 飞书平台事件体（D4 锁定） }
+      responses:
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 已接收（或 URL 验证响应）
+          content:
+            application/json:
+              schema: { type: object }
+        "401": { description: 签名无效 }
+  /integrations/feishu/cards:
+    post:
+      tags: [feishu]
+      operationId: feishuCardActions
+      summary: 飞书卡片交互回调（字段编辑、父分类联动、确认、取消）
+      description: 操作者由平台可信字段确定，回调中的 family ID、隐藏值不作为身份依据。确认走与网站相同的确认用例与回执。
+      security: []
+      x-authz: feishu_signature
+      x-idempotent: false
+      x-acceptance: [FS-04, FS-05, FS-06, FS-07, AUTH-08, AUTH-10]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, description: 飞书卡片回调体（D4 锁定） }
+      responses:
+        default: { $ref: "#/components/responses/Default" }
+        "200":
+          description: 卡片更新或 toast
+          content:
+            application/json:
+              schema: { type: object }
+        "401": { description: 签名无效 }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: 稳定动作 ID；客户端在发起动作时生成并在重试中复用
+      schema: { type: string, pattern: "^[A-Za-z0-9_-]{16,64}$" }
+    CsrfToken:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema: { type: string, minLength: 16, maxLength: 128 }
+    ActionId:
+      name: action_id
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[A-Za-z0-9_-]{16,64}$" }
+    FamilyId:
+      name: fid
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    UserId:
+      name: uid
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    EntryId:
+      name: eid
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    CategoryId:
+      name: cid
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    InvitationId:
+      name: iid
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    AttachmentId:
+      name: aid
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    JobId:
+      name: jid
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    BatchId:
+      name: bid
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    CandidateId:
+      name: cid
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    ExpectedVersionQuery:
+      name: expected_version
+      in: query
+      required: true
+      schema: { $ref: "#/components/schemas/Version" }
+    MonthRequired:
+      name: month
+      in: query
+      required: true
+      schema: { $ref: "#/components/schemas/Month" }
+    MonthQuery:
+      name: month
+      in: query
+      required: false
+      description: 省略为当前月（Pacific/Auckland）
+      schema: { $ref: "#/components/schemas/Month" }
+    FilterCreatedBy:
+      name: created_by
+      in: query
+      required: false
+      schema: { $ref: "#/components/schemas/Id" }
+    FilterType:
+      name: type
+      in: query
+      required: false
+      schema: { $ref: "#/components/schemas/EntryType" }
+    FilterCategory:
+      name: category_id
+      in: query
+      required: false
+      description: 一级或叶子分类 ID（按当前目录与重定向解析）
+      schema: { $ref: "#/components/schemas/Id" }
+    FilterPaymentMethod:
+      name: payment_method
+      in: query
+      required: false
+      schema: { $ref: "#/components/schemas/PaymentMethod" }
+    PageSize:
+      name: page_size
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: 不透明游标，绑定查询条件与 data_version
+      schema: { type: string, maxLength: 2048 }
+
+  responses:
+    Unauthenticated:
+      description: 未登录、token 失效或会话已被撤销（error.code=unauthenticated／password_change_required）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: 无权限；不泄露对象是否存在及内容
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: 不存在
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: 版本冲突／幂等 key 重用／业务冲突；details.current 为调用者有权查看的当前版本
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Gone:
+      description: 已过期（candidate_expired、invitation_expired、purged）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ValidationFailed:
+      description: 业务字段错误；details.fields 指出字段
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UnsupportedMedia:
+      description: 不支持的文件格式
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Default:
+      description: 其他错误（403／404／409／410／422／429／500／503 等）；统一 Error 结构。503 upstream_unknown 表示结果未知，须按动作 ID 查询
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: 速率限制；Retry-After 头给出秒数
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    # ── 基础类型 ──
+    Id:
+      type: string
+      pattern: "^[A-Za-z0-9_-]{1,64}$"
+    Version:
+      type: integer
+      minimum: 1
+    Timestamp:
+      type: string
+      format: date-time
+      description: UTC ISO-8601
+    BusinessDate:
+      type: string
+      format: date
+      pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+    Month:
+      type: string
+      pattern: "^\\d{4}-(0[1-9]|1[0-2])$"
+    Digest:
+      type: string
+      pattern: "^[a-f0-9]{64}$"
+    Amount:
+      type: string
+      description: 正十进制字符串；小数位不得超过币种 minor_digits；不接受指数、符号、NaN
+      pattern: "^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,3})?$"
+    Decimal:
+      type: string
+      description: 可为负的十进制字符串（统计值）
+      pattern: "^-?[0-9]+(\\.[0-9]+)?$"
+    RateValue:
+      type: string
+      description: 一单位币种可兑换的 USD，正十进制字符串，不截断
+      pattern: "^(0|[1-9][0-9]{0,9})(\\.[0-9]{1,20})?$"
+    CurrencyCode:
+      type: string
+      pattern: "^[A-Z]{3}$"
+    LoginName:
+      type: string
+      pattern: "^[A-Za-z][A-Za-z0-9_.-]{2,31}$"
+      description: 唯一，不区分大小写
+    DisplayName:
+      type: string
+      minLength: 1
+      maxLength: 24
+    Note:
+      type: string
+      maxLength: 200
+    CategoryName:
+      type: string
+      minLength: 1
+      maxLength: 24
+    EntryType:
+      type: string
+      enum: [expense, income, refund, internal_transfer, exchange, card_repayment, receivable]
+    PaymentMethod:
+      type: string
+      enum: [credit_card, debit_card, cash]
+    CategoryKind:
+      type: string
+      enum: [expense, income, internal_transfer, exchange, card_repayment, receivable]
+    FamilyRole:
+      type: string
+      enum: [admin, member]
+    EntrySource:
+      type: string
+      enum: [manual, web_ai, feishu, import]
+    MoneyPair:
+      type: object
+      required: [nzd, cny, nzd_minor, cny_minor]
+      properties:
+        nzd: { $ref: "#/components/schemas/Decimal" }
+        cny: { $ref: "#/components/schemas/Decimal" }
+        nzd_minor: { type: integer }
+        cny_minor: { type: integer }
+
+    # ── 错误 ──
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code:
+              type: string
+              enum:
+                - unauthenticated
+                - password_change_required
+                - csrf_failed
+                - forbidden
+                - not_found
+                - validation_failed
+                - version_conflict
+                - idempotency_key_reused
+                - action_not_found
+                - candidate_expired
+                - candidate_stale
+                - batch_too_large
+                - rate_pending
+                - refund_exceeds_remaining
+                - refund_currency_mismatch
+                - refund_target_invalid
+                - has_linked_refunds
+                - type_change_not_allowed
+                - category_kind_mismatch
+                - category_inactive
+                - category_in_use
+                - category_cycle
+                - last_admin
+                - login_name_taken
+                - rename_pending
+                - invitation_expired
+                - purged
+                - data_changing
+                - data_changed
+                - unsupported_media_type
+                - upload_invalid
+                - rate_limited
+                - upstream_unknown
+                - internal
+            message: { type: string, description: 中文用户可读信息，不含他人对象内容 }
+            request_id: { type: string }
+            details:
+              type: object
+              description: 脱敏细节，如 fields、current、retry_after
+              properties:
+                fields:
+                  type: array
+                  items:
+                    type: object
+                    required: [field, code]
+                    properties:
+                      field: { type: string }
+                      code: { type: string }
+                current: { description: 调用者有权查看的当前资源 }
+
+    Health:
+      type: object
+      required: [status, version, commit, artifact_digest, env]
+      properties:
+        status: { type: string, enum: [ok] }
+        version: { type: string }
+        commit: { type: string }
+        artifact_digest: { type: string }
+        env: { type: string, enum: [local, staging, prod] }
+
+    # ── 认证与账号 ──
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [login_name, password]
+      properties:
+        login_name: { type: string, minLength: 1, maxLength: 64 }
+        password: { type: string, writeOnly: true, minLength: 1, maxLength: 256 }
+    ChallengeRequest:
+      type: object
+      additionalProperties: false
+      required: [challenge_session, new_password]
+      properties:
+        challenge_session: { type: string, maxLength: 4096 }
+        new_password: { type: string, writeOnly: true, minLength: 10, maxLength: 256 }
+    LoginResult:
+      oneOf:
+        - $ref: "#/components/schemas/TokenResult"
+        - type: object
+          required: [status, challenge, challenge_session]
+          properties:
+            status: { const: challenge }
+            challenge: { type: string, enum: [new_password_required] }
+            challenge_session: { type: string }
+    TokenResult:
+      type: object
+      required: [status, access_token, expires_in]
+      properties:
+        status: { const: ok }
+        access_token: { type: string }
+        expires_in: { type: integer, description: 秒 }
+    Me:
+      type: object
+      required: [user_id, login_name, display_name, version, is_system_admin, families, feishu]
+      properties:
+        user_id: { $ref: "#/components/schemas/Id" }
+        login_name: { type: string }
+        display_name: { $ref: "#/components/schemas/DisplayName" }
+        version: { $ref: "#/components/schemas/Version" }
+        is_system_admin: { type: boolean }
+        pending_rename: { $ref: "#/components/schemas/RenameOperation" }
+        families:
+          type: array
+          items: { $ref: "#/components/schemas/FamilySummary" }
+        feishu: { $ref: "#/components/schemas/FeishuBinding" }
+    FeishuBinding:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [unbound, active, suspended] }
+        default_family_id: { $ref: "#/components/schemas/Id" }
+        bound_at: { $ref: "#/components/schemas/Timestamp" }
+        version: { $ref: "#/components/schemas/Version" }
+    RenameOperation:
+      type: object
+      required: [op_id, state, new_login_name]
+      properties:
+        op_id: { $ref: "#/components/schemas/Id" }
+        state: { type: string, enum: [pending, done, failed] }
+        new_login_name: { type: string }
+        failure_code: { type: string }
+    AdminUser:
+      type: object
+      required: [user_id, login_name, display_name, status, is_system_admin, must_change_password, version]
+      properties:
+        user_id: { $ref: "#/components/schemas/Id" }
+        login_name: { type: string }
+        display_name: { $ref: "#/components/schemas/DisplayName" }
+        status: { type: string, enum: [active, disabled] }
+        is_system_admin: { type: boolean }
+        must_change_password: { type: boolean }
+        version: { $ref: "#/components/schemas/Version" }
+    TemporaryPasswordResult:
+      type: object
+      required: [user]
+      properties:
+        user: { $ref: "#/components/schemas/AdminUser" }
+        temporary_password:
+          type: string
+          description: 仅首次响应返回；重放时省略并设置 temporary_password_redacted
+        temporary_password_redacted: { type: boolean }
+
+    # ── 家庭 ──
+    FamilySummary:
+      type: object
+      required: [family_id, name, role]
+      properties:
+        family_id: { $ref: "#/components/schemas/Id" }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/FamilyRole" }
+    Family:
+      type: object
+      required: [family_id, name, timezone, version, member_count, my_role]
+      properties:
+        family_id: { $ref: "#/components/schemas/Id" }
+        name: { type: string }
+        timezone: { type: string }
+        version: { $ref: "#/components/schemas/Version" }
+        member_count: { type: integer }
+        my_role: { $ref: "#/components/schemas/FamilyRole" }
+    FamilyConfig:
+      type: object
+      required: [default_currency, default_payment_method, timezone, category_manifest_version, version]
+      properties:
+        default_currency: { $ref: "#/components/schemas/CurrencyCode" }
+        default_payment_method: { $ref: "#/components/schemas/PaymentMethod" }
+        timezone: { type: string }
+        category_manifest_version: { type: integer }
+        version: { $ref: "#/components/schemas/Version" }
+    Member:
+      type: object
+      required: [user_id, display_name, role, status, version]
+      properties:
+        user_id: { $ref: "#/components/schemas/Id" }
+        display_name: { $ref: "#/components/schemas/DisplayName" }
+        login_name:
+          type: string
+          description: 仅对 active 成员返回
+        role: { $ref: "#/components/schemas/FamilyRole" }
+        status: { type: string, enum: [active, removed] }
+        version: { $ref: "#/components/schemas/Version" }
+    Invitation:
+      type: object
+      required: [invitation_id, family_id, role, status, expires_at]
+      properties:
+        invitation_id: { $ref: "#/components/schemas/Id" }
+        family_id: { $ref: "#/components/schemas/Id" }
+        family_name: { type: string }
+        invitee_display_name: { type: string }
+        role: { $ref: "#/components/schemas/FamilyRole" }
+        status: { type: string, enum: [pending, accepted, declined, revoked, expired] }
+        expires_at: { $ref: "#/components/schemas/Timestamp" }
+
+    # ── 账目 ──
+    EntryCreate:
+      type: object
+      additionalProperties: false
+      required: [business_date, type, amount]
+      description: |
+        不接受 actor、family、折算值、汇率或权限字段。
+        - 非退款：`leaf_category_id`、`currency` 必填；分类 kind 必须与类型对应（ADR-0002）。
+        - 退款：`refund_of` 必填；`leaf_category_id`、`currency`、`payment_method` 必须省略，沿用原消费。
+        - 支出必须有 `payment_method`；收入可选；不计收支类型必须省略。
+      properties:
+        business_date: { $ref: "#/components/schemas/BusinessDate" }
+        type: { $ref: "#/components/schemas/EntryType" }
+        leaf_category_id: { $ref: "#/components/schemas/Id" }
+        currency: { $ref: "#/components/schemas/CurrencyCode" }
+        amount: { $ref: "#/components/schemas/Amount" }
+        note: { $ref: "#/components/schemas/Note" }
+        payment_method:
+          oneOf:
+            - $ref: "#/components/schemas/PaymentMethod"
+            - type: "null"
+        attachment_ids:
+          type: array
+          maxItems: 3
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/Id" }
+        refund_of: { $ref: "#/components/schemas/Id" }
+    EntryPatch:
+      type: object
+      additionalProperties: false
+      required: [expected_version]
+      description: 只提交变化字段。改日期或币种取新快照；改金额按原快照重算；其余保留快照。改为退款须同时提供 refund_of；退款不能改类型（ADR-0006）。
+      properties:
+        expected_version: { $ref: "#/components/schemas/Version" }
+        business_date: { $ref: "#/components/schemas/BusinessDate" }
+        type: { $ref: "#/components/schemas/EntryType" }
+        leaf_category_id: { $ref: "#/components/schemas/Id" }
+        currency: { $ref: "#/components/schemas/CurrencyCode" }
+        amount: { $ref: "#/components/schemas/Amount" }
+        note: { $ref: "#/components/schemas/Note" }
+        payment_method:
+          oneOf:
+            - $ref: "#/components/schemas/PaymentMethod"
+            - type: "null"
+        attachment_ids:
+          type: array
+          maxItems: 3
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/Id" }
+        refund_of: { $ref: "#/components/schemas/Id" }
+    FxSnapshot:
+      type: object
+      required: [requested_date, effective_date, provider, rates, fetched_at, manual]
+      properties:
+        requested_date: { $ref: "#/components/schemas/BusinessDate" }
+        effective_date: { $ref: "#/components/schemas/BusinessDate" }
+        provider: { type: string, examples: [ecb] }
+        rates:
+          type: object
+          description: 原币、NZD、CNY 的 USD 基准精确值及来源
+          additionalProperties:
+            type: object
+            required: [usd_value, source, revision]
+            properties:
+              usd_value: { $ref: "#/components/schemas/RateValue" }
+              source: { type: string, enum: [provider, family_manual, base], description: "base 表示 USD 基准本身（恒为 1）" }
+              revision: { type: integer }
+        fetched_at: { $ref: "#/components/schemas/Timestamp" }
+        manual: { type: boolean, description: 任一值来自家庭修正 }
+    FxPreview:
+      oneOf:
+        - type: object
+          required: [status, snapshot, display_amounts]
+          properties:
+            status: { const: ok }
+            snapshot: { $ref: "#/components/schemas/FxSnapshot" }
+            display_amounts: { $ref: "#/components/schemas/DisplayAmounts" }
+            snapshot_changed:
+              type: boolean
+              description: 修改预览时，是否将更换快照
+        - type: object
+          required: [status, missing_currencies, searched_from, searched_to]
+          properties:
+            status: { const: rate_pending }
+            missing_currencies:
+              type: array
+              items: { $ref: "#/components/schemas/CurrencyCode" }
+            searched_from: { $ref: "#/components/schemas/BusinessDate" }
+            searched_to: { $ref: "#/components/schemas/BusinessDate" }
+    DisplayAmounts:
+      type: object
+      required: [amount, nzd, cny]
+      properties:
+        amount: { $ref: "#/components/schemas/Decimal" }
+        nzd: { $ref: "#/components/schemas/Decimal" }
+        cny: { $ref: "#/components/schemas/Decimal" }
+    ResolvedCategory:
+      type: object
+      required: [leaf_id, leaf_name, parent_id, parent_name, kind, leaf_status]
+      properties:
+        leaf_id: { $ref: "#/components/schemas/Id" }
+        leaf_name: { type: string }
+        parent_id: { $ref: "#/components/schemas/Id" }
+        parent_name: { type: string }
+        kind: { $ref: "#/components/schemas/CategoryKind" }
+        leaf_status: { type: string, enum: [active, disabled, deleted], description: deleted 为软删除（仅历史账目可见） }
+        stored_leaf_id:
+          description: 账目原引用的叶子（若经重定向）
+          $ref: "#/components/schemas/Id"
+    Entry:
+      type: object
+      required:
+        - entry_id
+        - family_id
+        - business_date
+        - type
+        - category
+        - currency
+        - amount
+        - payment_method
+        - note
+        - created_by
+        - created_by_display
+        - created_by_left
+        - created_at
+        - updated_at
+        - source
+        - version
+        - state
+        - fx_snapshot
+        - nzd_minor
+        - cny_minor
+        - display_amounts
+        - counts_in_stats
+        - attachments
+      properties:
+        entry_id: { $ref: "#/components/schemas/Id" }
+        family_id: { $ref: "#/components/schemas/Id" }
+        business_date: { $ref: "#/components/schemas/BusinessDate" }
+        type: { $ref: "#/components/schemas/EntryType" }
+        category: { $ref: "#/components/schemas/ResolvedCategory" }
+        currency: { $ref: "#/components/schemas/CurrencyCode" }
+        amount: { $ref: "#/components/schemas/Decimal" }
+        payment_method:
+          oneOf:
+            - $ref: "#/components/schemas/PaymentMethod"
+            - type: "null"
+        note: { type: string }
+        created_by: { $ref: "#/components/schemas/Id" }
+        created_by_display: { type: string }
+        created_by_left: { type: boolean, description: 录入人已离开家庭（ADR-0006） }
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+        updated_at: { $ref: "#/components/schemas/Timestamp" }
+        source: { $ref: "#/components/schemas/EntrySource" }
+        version: { $ref: "#/components/schemas/Version" }
+        state: { type: string, enum: [active, trashed] }
+        deleted_at: { $ref: "#/components/schemas/Timestamp" }
+        purge_after: { $ref: "#/components/schemas/Timestamp" }
+        fx_snapshot: { $ref: "#/components/schemas/FxSnapshot" }
+        nzd_minor: { type: integer }
+        cny_minor: { type: integer }
+        display_amounts: { $ref: "#/components/schemas/DisplayAmounts" }
+        counts_in_stats: { type: boolean, description: false 表示“不计收支” }
+        refund_of: { $ref: "#/components/schemas/Id" }
+        refund_ids:
+          type: array
+          items: { $ref: "#/components/schemas/Id" }
+        refunded_amount: { $ref: "#/components/schemas/Decimal" }
+        refundable_amount: { $ref: "#/components/schemas/Decimal" }
+        receipt_group_id: { $ref: "#/components/schemas/Id" }
+        attachments:
+          type: array
+          items:
+            type: object
+            required: [attachment_id, content_type]
+            properties:
+              attachment_id: { $ref: "#/components/schemas/Id" }
+              content_type: { type: string }
+        can_edit: { type: boolean, description: 当前调用者是否可修改／删除（仅供界面，服务端仍会检查） }
+    EntryPage:
+      type: object
+      required: [items, data_version]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Entry" }
+        next_cursor: { type: string }
+        data_version: { type: string }
+    EntryFilters:
+      type: object
+      additionalProperties: false
+      properties:
+        created_by: { $ref: "#/components/schemas/Id" }
+        type: { $ref: "#/components/schemas/EntryType" }
+        category_id: { $ref: "#/components/schemas/Id" }
+        payment_method: { $ref: "#/components/schemas/PaymentMethod" }
+    DeleteResult:
+      type: object
+      required: [entry_id, state, purge_after, version]
+      properties:
+        entry_id: { $ref: "#/components/schemas/Id" }
+        state: { const: trashed }
+        purge_after: { $ref: "#/components/schemas/Timestamp" }
+        version: { $ref: "#/components/schemas/Version" }
+        also_trashed:
+          type: array
+          description: 一并删除的关联退款 ID
+          items: { $ref: "#/components/schemas/Id" }
+
+    Dashboard:
+      type: object
+      required: [family_id, month, filters, data_version, computed_at, entry_count, totals, by_payment_method, category_pie]
+      properties:
+        family_id: { $ref: "#/components/schemas/Id" }
+        month: { $ref: "#/components/schemas/Month" }
+        filters: { $ref: "#/components/schemas/EntryFilters" }
+        data_version: { type: string }
+        computed_at: { $ref: "#/components/schemas/Timestamp" }
+        entry_count: { type: integer }
+        totals:
+          type: object
+          required: [income, expense_gross, refund, net_expense, balance]
+          properties:
+            income: { $ref: "#/components/schemas/MoneyPair" }
+            expense_gross: { $ref: "#/components/schemas/MoneyPair" }
+            refund: { $ref: "#/components/schemas/MoneyPair" }
+            net_expense: { $ref: "#/components/schemas/MoneyPair" }
+            balance:
+              description: 总收入－净支出；不是银行余额
+              $ref: "#/components/schemas/MoneyPair"
+        by_payment_method:
+          type: array
+          items:
+            type: object
+            required: [payment_method, expense, refund, net, expense_count, refund_count]
+            properties:
+              payment_method: { $ref: "#/components/schemas/PaymentMethod" }
+              expense: { $ref: "#/components/schemas/MoneyPair" }
+              refund: { $ref: "#/components/schemas/MoneyPair" }
+              net: { $ref: "#/components/schemas/MoneyPair" }
+              expense_count: { type: integer }
+              refund_count: { type: integer }
+        category_pie:
+          type: object
+          required: [currency, denominator_minor, denominator, slices, negatives, empty]
+          properties:
+            currency: { const: NZD }
+            denominator_minor: { type: integer, description: 所有正净支出一级分类之和 }
+            denominator: { $ref: "#/components/schemas/Decimal" }
+            slices:
+              type: array
+              items:
+                type: object
+                required: [category_id, name, net_minor, net, share_percent]
+                properties:
+                  category_id: { $ref: "#/components/schemas/Id" }
+                  name: { type: string }
+                  net_minor: { type: integer }
+                  net: { $ref: "#/components/schemas/Decimal" }
+                  share_percent: { $ref: "#/components/schemas/Decimal" }
+            negatives:
+              type: array
+              items:
+                type: object
+                required: [category_id, name, net_minor, net]
+                properties:
+                  category_id: { $ref: "#/components/schemas/Id" }
+                  name: { type: string }
+                  net_minor: { type: integer }
+                  net: { $ref: "#/components/schemas/Decimal" }
+            empty: { type: boolean }
+
+    ExportJob:
+      type: object
+      required: [job_id, status, format, month]
+      properties:
+        job_id: { $ref: "#/components/schemas/Id" }
+        status: { type: string, enum: [queued, running, ready, failed] }
+        format: { type: string, enum: [csv, xlsx] }
+        month: { $ref: "#/components/schemas/Month" }
+        filters: { $ref: "#/components/schemas/EntryFilters" }
+        row_count: { type: integer }
+        download_url: { type: string, format: uri }
+        download_expires_at: { $ref: "#/components/schemas/Timestamp" }
+
+    ActionReceipt:
+      type: object
+      required: [action_id, kind, status, committed_at, results]
+      properties:
+        action_id: { type: string }
+        kind: { type: string, description: 如 entry.create、batch.confirm }
+        status: { const: committed }
+        committed_at: { $ref: "#/components/schemas/Timestamp" }
+        results:
+          type: array
+          items:
+            type: object
+            required: [object_type, object_id]
+            properties:
+              object_type: { type: string }
+              object_id: { $ref: "#/components/schemas/Id" }
+              version: { $ref: "#/components/schemas/Version" }
+              purged: { type: boolean }
+
+    # ── 分类 ──
+    Category:
+      type: object
+      required: [category_id, kind, name, status, version, sort]
+      properties:
+        category_id: { $ref: "#/components/schemas/Id" }
+        kind: { $ref: "#/components/schemas/CategoryKind" }
+        parent_id: { $ref: "#/components/schemas/Id" }
+        name: { $ref: "#/components/schemas/CategoryName" }
+        status: { type: string, enum: [active, disabled] }
+        redirect_to: { $ref: "#/components/schemas/Id" }
+        sort: { type: integer }
+        usage_count: { type: integer, description: 引用该叶子的有效＋回收站账目数 }
+        version: { $ref: "#/components/schemas/Version" }
+    CategoryTree:
+      type: object
+      required: [manifest_version, groups]
+      properties:
+        manifest_version: { type: integer }
+        groups:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Category"
+              - type: object
+                required: [children]
+                properties:
+                  children:
+                    type: array
+                    items: { $ref: "#/components/schemas/Category" }
+
+    # ── 币种与汇率 ──
+    Currency:
+      type: object
+      additionalProperties: false
+      required: [code, name_zh, minor_digits, provider_supported]
+      properties:
+        code: { $ref: "#/components/schemas/CurrencyCode" }
+        name_zh: { type: string, minLength: 1, maxLength: 20 }
+        minor_digits: { type: integer, enum: [0, 2, 3] }
+        provider_supported: { type: boolean }
+    ResolvedRates:
+      oneOf:
+        - type: object
+          required: [status, requested_date, effective_date, rates]
+          properties:
+            status: { const: ok }
+            requested_date: { $ref: "#/components/schemas/BusinessDate" }
+            effective_date: { $ref: "#/components/schemas/BusinessDate" }
+            rates:
+              type: object
+              additionalProperties:
+                type: object
+                required: [usd_value, source, revision]
+                properties:
+                  usd_value: { $ref: "#/components/schemas/RateValue" }
+                  source: { type: string, enum: [provider, family_manual, base], description: "base 表示 USD 基准本身（恒为 1）" }
+                  revision: { type: integer }
+        - type: object
+          required: [status, missing_currencies, searched_from, searched_to]
+          properties:
+            status: { const: rate_pending }
+            missing_currencies:
+              type: array
+              items: { $ref: "#/components/schemas/CurrencyCode" }
+            searched_from: { $ref: "#/components/schemas/BusinessDate" }
+            searched_to: { $ref: "#/components/schemas/BusinessDate" }
+    ManualRate:
+      type: object
+      required: [date, currency, usd_value, revision, entered_by, reason, entered_at]
+      properties:
+        date: { $ref: "#/components/schemas/BusinessDate" }
+        currency: { $ref: "#/components/schemas/CurrencyCode" }
+        usd_value: { $ref: "#/components/schemas/RateValue" }
+        revision: { type: integer }
+        entered_by: { $ref: "#/components/schemas/Id" }
+        reason: { type: string }
+        entered_at: { $ref: "#/components/schemas/Timestamp" }
+    RecomputeJob:
+      type: object
+      required: [job_id, status, date_from, date_to]
+      properties:
+        job_id: { $ref: "#/components/schemas/Id" }
+        status: { type: string, enum: [preparing, preview_ready, applying, done, failed, superseded] }
+        date_from: { $ref: "#/components/schemas/BusinessDate" }
+        date_to: { $ref: "#/components/schemas/BusinessDate" }
+        preview_digest: { $ref: "#/components/schemas/Digest" }
+        preview:
+          type: object
+          properties:
+            entry_count: { type: integer }
+            changed_count: { type: integer }
+            months:
+              type: array
+              items:
+                type: object
+                required: [month, nzd_delta_minor, cny_delta_minor]
+                properties:
+                  month: { $ref: "#/components/schemas/Month" }
+                  nzd_delta_minor: { type: integer }
+                  cny_delta_minor: { type: integer }
+            pending_currencies:
+              type: array
+              items: { $ref: "#/components/schemas/CurrencyCode" }
+        applied_count: { type: integer }
+        failure_code: { type: string }
+
+    # ── 照片 ──
+    UploadIntent:
+      type: object
+      required: [attachment_id, upload_url, fields, expires_at]
+      properties:
+        attachment_id: { $ref: "#/components/schemas/Id" }
+        upload_url: { type: string, format: uri }
+        fields:
+          type: object
+          additionalProperties: { type: string }
+        expires_at: { $ref: "#/components/schemas/Timestamp" }
+    Attachment:
+      type: object
+      required: [attachment_id, status, content_type, bytes]
+      properties:
+        attachment_id: { $ref: "#/components/schemas/Id" }
+        status: { type: string, enum: [pending, ready, rejected] }
+        content_type: { type: string }
+        bytes: { type: integer }
+        width: { type: integer }
+        height: { type: integer }
+        reject_reason: { type: string, enum: [format_mismatch, too_large, too_many_pixels, digest_mismatch, unreadable] }
+
+    # ── AI ──
+    RecognitionJob:
+      type: object
+      required: [job_id, status, created_at]
+      properties:
+        job_id: { $ref: "#/components/schemas/Id" }
+        status: { type: string, enum: [received, queued, running, candidate_ready, failed] }
+        batch_id: { $ref: "#/components/schemas/Id" }
+        failure:
+          type: object
+          properties:
+            class: { type: string, enum: [input_rejected, auth_error, permission_revoked, rate_limited, transport_error, timeout, protocol_error, schema_invalid, semantic_invalid, attempts_exhausted, internal], description: 见 ADR-0011 错误分类 }
+            message: { type: string }
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+    BatchSummary:
+      type: object
+      required: [batch_id, source, status, expires_at, candidate_count, version]
+      properties:
+        batch_id: { $ref: "#/components/schemas/Id" }
+        source: { type: string, enum: [web_ai, feishu] }
+        status: { type: string, enum: [open, closed, expired, cancelled] }
+        expires_at: { $ref: "#/components/schemas/Timestamp" }
+        candidate_count: { type: integer }
+        version: { $ref: "#/components/schemas/Version" }
+    Batch:
+      allOf:
+        - $ref: "#/components/schemas/BatchSummary"
+        - type: object
+          required: [candidates]
+          properties:
+            candidates:
+              type: array
+              maxItems: 10
+              items: { $ref: "#/components/schemas/Candidate" }
+            input_issues:
+              type: array
+              description: 整体输入问题（照片看不清、总额不明确、含指令性文字等）
+              items: { type: string }
+    FieldSource:
+      type: string
+      enum: [evidence, inferred, family_default, request_date, user]
+      description: evidence=输入中有证据；inferred=推断需核对；family_default=使用家庭默认值；request_date=使用请求接收日；user=人工修改
+    Candidate:
+      type: object
+      required: [candidate_id, batch_id, version, status, field_sources, missing_fields, needs_review, problems, content_digest]
+      properties:
+        candidate_id: { $ref: "#/components/schemas/Id" }
+        batch_id: { $ref: "#/components/schemas/Id" }
+        version: { $ref: "#/components/schemas/Version" }
+        status: { type: string, enum: [ready, incomplete, needs_update, confirmed, deleted, expired] }
+        type: { $ref: "#/components/schemas/EntryType" }
+        business_date: { $ref: "#/components/schemas/BusinessDate" }
+        currency: { $ref: "#/components/schemas/CurrencyCode" }
+        amount:
+          oneOf:
+            - $ref: "#/components/schemas/Decimal"
+            - type: "null"
+        category: { $ref: "#/components/schemas/ResolvedCategory" }
+        payment_method:
+          oneOf:
+            - $ref: "#/components/schemas/PaymentMethod"
+            - type: "null"
+        note: { type: string }
+        field_sources:
+          type: object
+          additionalProperties: { $ref: "#/components/schemas/FieldSource" }
+        missing_fields:
+          type: array
+          items: { type: string, enum: [amount, currency, business_date, category, payment_method, type] }
+        needs_review:
+          type: array
+          items: { type: string }
+        problems:
+          type: array
+          description: 如 category_inactive、rate_pending、refund_not_supported
+          items: { type: string }
+        receipt_group_id: { $ref: "#/components/schemas/Id" }
+        attachment_id: { $ref: "#/components/schemas/Id" }
+        fx_preview: { $ref: "#/components/schemas/FxPreview" }
+        content_digest: { $ref: "#/components/schemas/Digest" }
+        entry_id:
+          description: 已确认时的正式账目 ID
+          $ref: "#/components/schemas/Id"
+    CandidatePatch:
+      type: object
+      additionalProperties: false
+      required: [expected_version]
+      properties:
+        expected_version: { $ref: "#/components/schemas/Version" }
+        type:
+          type: string
+          enum: [expense, income, internal_transfer, exchange, card_repayment, receivable]
+          description: 候选不支持退款类型；退款请在网站从原消费发起
+        business_date: { $ref: "#/components/schemas/BusinessDate" }
+        currency: { $ref: "#/components/schemas/CurrencyCode" }
+        amount: { $ref: "#/components/schemas/Amount" }
+        leaf_category_id: { $ref: "#/components/schemas/Id" }
+        payment_method:
+          oneOf:
+            - $ref: "#/components/schemas/PaymentMethod"
+            - type: "null"
+        note: { $ref: "#/components/schemas/Note" }
+    ConfirmResult:
+      type: object
+      required: [action_id, status, entries]
+      properties:
+        action_id: { type: string }
+        status: { const: committed }
+        entries:
+          type: array
+          items:
+            type: object
+            required: [candidate_id, entry_id]
+            properties:
+              candidate_id: { $ref: "#/components/schemas/Id" }
+              entry_id: { $ref: "#/components/schemas/Id" }
+
+    # ── 费用 ──
+    CostSummary:
+      type: object
+      required: [month, budget_nzd, thresholds, estimated, billed]
+      properties:
+        month: { $ref: "#/components/schemas/Month" }
+        budget_nzd: { $ref: "#/components/schemas/Decimal" }
+        thresholds:
+          type: array
+          items:
+            type: object
+            required: [percent, amount_nzd]
+            properties:
+              percent: { type: integer }
+              amount_nzd: { $ref: "#/components/schemas/Decimal" }
+        estimated:
+          type: object
+          required: [known_nzd, model_calls, unknown_usage_calls, as_of]
+          properties:
+            known_nzd: { $ref: "#/components/schemas/Decimal" }
+            by_service:
+              type: object
+              additionalProperties: { $ref: "#/components/schemas/Decimal" }
+            model_calls: { type: integer }
+            unknown_usage_calls: { type: integer }
+            price_verified_at: { $ref: "#/components/schemas/BusinessDate" }
+            as_of: { $ref: "#/components/schemas/Timestamp" }
+        billed:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [amount, currency, as_of, tag_coverage]
+              properties:
+                amount: { $ref: "#/components/schemas/Decimal" }
+                currency: { $ref: "#/components/schemas/CurrencyCode" }
+                as_of: { $ref: "#/components/schemas/Timestamp" }
+                tag_coverage: { type: string, enum: [complete, partial, unknown] }
+    Alert:
+      type: object
+      required: [alert_id, month, threshold_percent, basis, triggered_at, delivery]
+      properties:
+        alert_id: { $ref: "#/components/schemas/Id" }
+        month: { $ref: "#/components/schemas/Month" }
+        threshold_percent: { type: integer, enum: [80, 100] }
+        basis: { type: string, enum: [estimate, billed] }
+        triggered_at: { $ref: "#/components/schemas/Timestamp" }
+        delivery:
+          type: array
+          items:
+            type: object
+            required: [channel, status, attempts]
+            properties:
+              channel: { type: string, enum: [feishu, email, admin_page] }
+              status: { type: string, enum: [pending, sent, failed, unknown] }
+              attempts: { type: integer }

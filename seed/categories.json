@@ -1,0 +1,399 @@
+{
+  "schema_version": 2,
+  "manifest_version": 1,
+  "scope": "template_clone_per_family",
+  "notes": "创建家庭时按模板生成该家庭独立目录；ID在初始化后固定，改名或移动不得重新生成。每条账目必须引用一个有效叶子分类（ADR-0002）。kind与记录类型对应：expense/income 为收支目录；refund 沿用原消费的支出叶子；internal_transfer/exchange/card_repayment/receivable 各有不计收支目录。",
+  "kind_for_entry_type": {
+    "expense": "expense",
+    "refund": "expense",
+    "income": "income",
+    "internal_transfer": "internal_transfer",
+    "exchange": "exchange",
+    "card_repayment": "card_repayment",
+    "receivable": "receivable"
+  },
+  "uncategorized_leaf": {
+    "expense": "expense-09-02",
+    "income": "income-03-02"
+  },
+  "categories": [
+    {
+      "id": "expense-01",
+      "kind": "expense",
+      "name": "食品与餐饮",
+      "status": "active",
+      "children": [
+        {
+          "id": "expense-01-01",
+          "name": "超市综合购物",
+          "status": "active"
+        },
+        {
+          "id": "expense-01-02",
+          "name": "超市食品",
+          "status": "active"
+        },
+        {
+          "id": "expense-01-03",
+          "name": "外出用餐",
+          "status": "active"
+        },
+        {
+          "id": "expense-01-04",
+          "name": "学校餐食",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "expense-02",
+      "kind": "expense",
+      "name": "居家生活",
+      "status": "active",
+      "children": [
+        {
+          "id": "expense-02-01",
+          "name": "日用杂物",
+          "status": "active"
+        },
+        {
+          "id": "expense-02-02",
+          "name": "家具",
+          "status": "active"
+        },
+        {
+          "id": "expense-02-03",
+          "name": "家电与耗材",
+          "status": "active"
+        },
+        {
+          "id": "expense-02-04",
+          "name": "维修",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "expense-03",
+      "kind": "expense",
+      "name": "交通出行",
+      "status": "active",
+      "children": [
+        {
+          "id": "expense-03-01",
+          "name": "公交",
+          "status": "active"
+        },
+        {
+          "id": "expense-03-02",
+          "name": "校巴",
+          "status": "active"
+        },
+        {
+          "id": "expense-03-03",
+          "name": "打车",
+          "status": "active"
+        },
+        {
+          "id": "expense-03-04",
+          "name": "燃油",
+          "status": "active"
+        },
+        {
+          "id": "expense-03-05",
+          "name": "停车与路桥",
+          "status": "active"
+        },
+        {
+          "id": "expense-03-06",
+          "name": "驾驶培训",
+          "status": "active"
+        },
+        {
+          "id": "expense-03-07",
+          "name": "车辆保险",
+          "status": "active"
+        },
+        {
+          "id": "expense-03-08",
+          "name": "道路救援会员",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "expense-04",
+      "kind": "expense",
+      "name": "通信与订阅",
+      "status": "active",
+      "children": [
+        {
+          "id": "expense-04-01",
+          "name": "手机与话费",
+          "status": "active"
+        },
+        {
+          "id": "expense-04-02",
+          "name": "软件订阅",
+          "status": "active"
+        },
+        {
+          "id": "expense-04-03",
+          "name": "域名与网络服务",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "expense-05",
+      "kind": "expense",
+      "name": "医疗与个护",
+      "status": "active",
+      "children": [
+        {
+          "id": "expense-05-01",
+          "name": "药品",
+          "status": "active"
+        },
+        {
+          "id": "expense-05-02",
+          "name": "个人护理",
+          "status": "active"
+        },
+        {
+          "id": "expense-05-03",
+          "name": "药妆综合购物",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "expense-06",
+      "kind": "expense",
+      "name": "教育与职业",
+      "status": "active",
+      "children": [
+        {
+          "id": "expense-06-01",
+          "name": "学习用品",
+          "status": "active"
+        },
+        {
+          "id": "expense-06-02",
+          "name": "职业组织会费",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "expense-07",
+      "kind": "expense",
+      "name": "娱乐休闲",
+      "status": "active",
+      "children": [
+        {
+          "id": "expense-07-01",
+          "name": "电影",
+          "status": "active"
+        },
+        {
+          "id": "expense-07-02",
+          "name": "其他娱乐",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "expense-08",
+      "kind": "expense",
+      "name": "人情与往来",
+      "status": "active",
+      "children": [
+        {
+          "id": "expense-08-01",
+          "name": "给他人转账",
+          "status": "active"
+        },
+        {
+          "id": "expense-08-02",
+          "name": "礼金与礼物",
+          "status": "active"
+        },
+        {
+          "id": "expense-08-03",
+          "name": "捐赠",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "expense-09",
+      "kind": "expense",
+      "name": "其他支出",
+      "status": "active",
+      "children": [
+        {
+          "id": "expense-09-01",
+          "name": "邮寄",
+          "status": "active"
+        },
+        {
+          "id": "expense-09-02",
+          "name": "待分类",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "income-01",
+      "kind": "income",
+      "name": "工作收入",
+      "status": "active",
+      "children": [
+        {
+          "id": "income-01-01",
+          "name": "工资",
+          "status": "active"
+        },
+        {
+          "id": "income-01-02",
+          "name": "奖金",
+          "status": "active"
+        },
+        {
+          "id": "income-01-03",
+          "name": "其他工作收入",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "income-02",
+      "kind": "income",
+      "name": "他人赠予",
+      "status": "active",
+      "children": [
+        {
+          "id": "income-02-01",
+          "name": "亲友赠予",
+          "status": "active"
+        },
+        {
+          "id": "income-02-02",
+          "name": "其他赠予",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "income-03",
+      "kind": "income",
+      "name": "其他收入",
+      "status": "active",
+      "children": [
+        {
+          "id": "income-03-01",
+          "name": "其他收入",
+          "status": "active"
+        },
+        {
+          "id": "income-03-02",
+          "name": "待分类",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "transfer-01",
+      "kind": "internal_transfer",
+      "name": "内部转账",
+      "status": "active",
+      "children": [
+        {
+          "id": "transfer-01-01",
+          "name": "账户间转账",
+          "status": "active"
+        },
+        {
+          "id": "transfer-01-02",
+          "name": "现金存取",
+          "status": "active"
+        },
+        {
+          "id": "transfer-01-03",
+          "name": "其他内部转账",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "exchange-01",
+      "kind": "exchange",
+      "name": "换汇",
+      "status": "active",
+      "children": [
+        {
+          "id": "exchange-01-01",
+          "name": "货币兑换",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "repayment-01",
+      "kind": "card_repayment",
+      "name": "信用卡还款",
+      "status": "active",
+      "children": [
+        {
+          "id": "repayment-01-01",
+          "name": "信用卡还款",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "receivable-01",
+      "kind": "receivable",
+      "name": "往来款",
+      "status": "active",
+      "children": [
+        {
+          "id": "receivable-01-01",
+          "name": "借出",
+          "status": "active"
+        },
+        {
+          "id": "receivable-01-02",
+          "name": "收回借款",
+          "status": "active"
+        },
+        {
+          "id": "receivable-01-03",
+          "name": "借入",
+          "status": "active"
+        },
+        {
+          "id": "receivable-01-04",
+          "name": "归还借款",
+          "status": "active"
+        },
+        {
+          "id": "receivable-01-05",
+          "name": "代垫",
+          "status": "active"
+        },
+        {
+          "id": "receivable-01-06",
+          "name": "收回代垫",
+          "status": "active"
+        },
+        {
+          "id": "receivable-01-07",
+          "name": "其他往来",
+          "status": "active"
+        }
+      ]
+    }
+  ]
+}

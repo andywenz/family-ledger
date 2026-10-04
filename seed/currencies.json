@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "notes": "全局币种元数据。minor_digits 决定原币金额最大小数位；NZD/CNY 折算值固定两位。provider_supported 表示 ECB（经 Frankfurter）是否发布该币种；不支持的币种只能由家庭管理员补录汇率（ADR-0004）。",
+  "currencies": [
+    {"code": "NZD", "name_zh": "新西兰元", "minor_digits": 2, "provider_supported": true, "initial": true},
+    {"code": "CNY", "name_zh": "人民币", "minor_digits": 2, "provider_supported": true, "initial": true},
+    {"code": "USD", "name_zh": "美元", "minor_digits": 2, "provider_supported": true, "initial": true},
+    {"code": "AUD", "name_zh": "澳大利亚元", "minor_digits": 2, "provider_supported": true, "initial": true},
+    {"code": "EUR", "name_zh": "欧元", "minor_digits": 2, "provider_supported": true, "initial": true}
+  ]
+}

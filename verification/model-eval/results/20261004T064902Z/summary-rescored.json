@@ -1,0 +1,640 @@
+{
+ "run_id": "20261004T064902Z",
+ "dry_run": false,
+ "region": "ap-southeast-2",
+ "prompt_version": "v2",
+ "output_mode": "tool",
+ "commit": "32d363ba4c67dcb25a43545db37947ef38b37450",
+ "dirty_worktree": false,
+ "received_date": "2026-10-04",
+ "cases": 45,
+ "models": [
+  "amazon.nova-micro-v1:0",
+  "amazon.nova-lite-v1:0",
+  "amazon.nova-pro-v1:0"
+ ],
+ "prices": {
+  "amazon.nova-micro-v1:0": {
+   "input_per_m": "0.037",
+   "output_per_m": "0.148",
+   "vision": false,
+   "usagetype": "APS2-NovaMicro-input-tokens / APS2-NovaMicro-output-tokens",
+   "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/current/ap-southeast-2/index.json (publicationDate 2026-10-03T00:11:38Z)",
+   "verified_at": "2026-10-04"
+  },
+  "amazon.nova-lite-v1:0": {
+   "input_per_m": "0.063",
+   "output_per_m": "0.252",
+   "vision": true,
+   "usagetype": "APS2-NovaLite-input-tokens / APS2-NovaLite-output-tokens",
+   "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/current/ap-southeast-2/index.json (publicationDate 2026-10-03T00:11:38Z)",
+   "verified_at": "2026-10-04"
+  },
+  "amazon.nova-pro-v1:0": {
+   "input_per_m": "0.84",
+   "output_per_m": "3.36",
+   "vision": true,
+   "usagetype": "APS2-NovaPro-input-tokens / APS2-NovaPro-output-tokens",
+   "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/current/ap-southeast-2/index.json (publicationDate 2026-10-03T00:11:38Z)",
+   "verified_at": "2026-10-04"
+  }
+ },
+ "spend": {
+  "budget_usd": "4.0",
+  "known_usd": "0.192755690",
+  "unknown_reserve_usd": "0",
+  "calls": 122,
+  "unknown_usage_calls": 0,
+  "throttled_retries": 0,
+  "requests_per_minute": 8,
+  "stopped_by_budget": false
+ },
+ "by_model": {
+  "amazon.nova-lite-v1:0": {
+   "text": {
+    "cases_run": 32,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 13,
+    "metrics": {
+     "amount": {
+      "correct": 26,
+      "total": 40,
+      "rate": 0.65
+     },
+     "category_parent": {
+      "correct": 24,
+      "total": 41,
+      "rate": 0.585
+     },
+     "count_ok": {
+      "correct": 19,
+      "total": 32,
+      "rate": 0.594
+     },
+     "currency": {
+      "correct": 25,
+      "total": 41,
+      "rate": 0.61
+     },
+     "date": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "date_not_invented": {
+      "correct": 25,
+      "total": 25,
+      "rate": 1.0
+     },
+     "empty_ok": {
+      "correct": 1,
+      "total": 1,
+      "rate": 1.0
+     },
+     "injection_flagged": {
+      "correct": 0,
+      "total": 1,
+      "rate": 0.0
+     },
+     "method": {
+      "correct": 4,
+      "total": 4,
+      "rate": 1.0
+     },
+     "method_not_invented": {
+      "correct": 20,
+      "total": 21,
+      "rate": 0.952
+     },
+     "no_invented_amount": {
+      "correct": 0,
+      "total": 1,
+      "rate": 0.0
+     },
+     "type": {
+      "correct": 26,
+      "total": 41,
+      "rate": 0.634
+     }
+    },
+    "latency_ms_p50": 920,
+    "latency_ms_max": 2736,
+    "known_cost_usd": "0.008009820",
+    "unknown_usage_calls": 0,
+    "input_tokens": 109668,
+    "output_tokens": 4368
+   },
+   "image": {
+    "cases_run": 13,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 6,
+    "metrics": {
+     "amount": {
+      "correct": 5,
+      "total": 12,
+      "rate": 0.417
+     },
+     "category_parent": {
+      "correct": 6,
+      "total": 12,
+      "rate": 0.5
+     },
+     "count_ok": {
+      "correct": 4,
+      "total": 13,
+      "rate": 0.308
+     },
+     "currency": {
+      "correct": 5,
+      "total": 12,
+      "rate": 0.417
+     },
+     "date": {
+      "correct": 3,
+      "total": 6,
+      "rate": 0.5
+     },
+     "empty_ok": {
+      "correct": 1,
+      "total": 1,
+      "rate": 1.0
+     },
+     "method": {
+      "correct": 4,
+      "total": 5,
+      "rate": 0.8
+     },
+     "method_not_invented": {
+      "correct": 1,
+      "total": 1,
+      "rate": 1.0
+     },
+     "type": {
+      "correct": 6,
+      "total": 12,
+      "rate": 0.5
+     }
+    },
+    "latency_ms_p50": 1095,
+    "latency_ms_max": 4012,
+    "known_cost_usd": "0.004615758",
+    "unknown_usage_calls": 0,
+    "input_tokens": 62242,
+    "output_tokens": 2756
+   },
+   "all": {
+    "cases_run": 45,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 19,
+    "metrics": {
+     "amount": {
+      "correct": 31,
+      "total": 52,
+      "rate": 0.596
+     },
+     "category_parent": {
+      "correct": 30,
+      "total": 53,
+      "rate": 0.566
+     },
+     "count_ok": {
+      "correct": 23,
+      "total": 45,
+      "rate": 0.511
+     },
+     "currency": {
+      "correct": 30,
+      "total": 53,
+      "rate": 0.566
+     },
+     "date": {
+      "correct": 5,
+      "total": 8,
+      "rate": 0.625
+     },
+     "date_not_invented": {
+      "correct": 25,
+      "total": 25,
+      "rate": 1.0
+     },
+     "empty_ok": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "injection_flagged": {
+      "correct": 0,
+      "total": 1,
+      "rate": 0.0
+     },
+     "method": {
+      "correct": 8,
+      "total": 9,
+      "rate": 0.889
+     },
+     "method_not_invented": {
+      "correct": 21,
+      "total": 22,
+      "rate": 0.955
+     },
+     "no_invented_amount": {
+      "correct": 0,
+      "total": 1,
+      "rate": 0.0
+     },
+     "type": {
+      "correct": 32,
+      "total": 53,
+      "rate": 0.604
+     }
+    },
+    "latency_ms_p50": 947,
+    "latency_ms_max": 4012,
+    "known_cost_usd": "0.012625578",
+    "unknown_usage_calls": 0,
+    "input_tokens": 171910,
+    "output_tokens": 7124
+   }
+  },
+  "amazon.nova-micro-v1:0": {
+   "text": {
+    "cases_run": 32,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 2,
+    "metrics": {
+     "amount": {
+      "correct": 38,
+      "total": 41,
+      "rate": 0.927
+     },
+     "category_parent": {
+      "correct": 33,
+      "total": 39,
+      "rate": 0.846
+     },
+     "count_ok": {
+      "correct": 29,
+      "total": 32,
+      "rate": 0.906
+     },
+     "currency": {
+      "correct": 37,
+      "total": 41,
+      "rate": 0.902
+     },
+     "date": {
+      "correct": 3,
+      "total": 3,
+      "rate": 1.0
+     },
+     "date_not_invented": {
+      "correct": 36,
+      "total": 36,
+      "rate": 1.0
+     },
+     "empty_ok": {
+      "correct": 1,
+      "total": 1,
+      "rate": 1.0
+     },
+     "injection_flagged": {
+      "correct": 1,
+      "total": 2,
+      "rate": 0.5
+     },
+     "method": {
+      "correct": 5,
+      "total": 5,
+      "rate": 1.0
+     },
+     "method_not_invented": {
+      "correct": 25,
+      "total": 25,
+      "rate": 1.0
+     },
+     "refund_flagged": {
+      "correct": 0,
+      "total": 2,
+      "rate": 0.0
+     },
+     "type": {
+      "correct": 36,
+      "total": 39,
+      "rate": 0.923
+     }
+    },
+    "latency_ms_p50": 782,
+    "latency_ms_max": 2605,
+    "known_cost_usd": "0.005085872",
+    "unknown_usage_calls": 0,
+    "input_tokens": 109668,
+    "output_tokens": 6947
+   },
+   "image": {
+    "cases_run": 0,
+    "cases_not_run": 13,
+    "protocol_or_request_failures": 0,
+    "metrics": {},
+    "latency_ms_p50": null,
+    "latency_ms_max": null,
+    "known_cost_usd": "0",
+    "unknown_usage_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   },
+   "all": {
+    "cases_run": 32,
+    "cases_not_run": 13,
+    "protocol_or_request_failures": 2,
+    "metrics": {
+     "amount": {
+      "correct": 38,
+      "total": 41,
+      "rate": 0.927
+     },
+     "category_parent": {
+      "correct": 33,
+      "total": 39,
+      "rate": 0.846
+     },
+     "count_ok": {
+      "correct": 29,
+      "total": 32,
+      "rate": 0.906
+     },
+     "currency": {
+      "correct": 37,
+      "total": 41,
+      "rate": 0.902
+     },
+     "date": {
+      "correct": 3,
+      "total": 3,
+      "rate": 1.0
+     },
+     "date_not_invented": {
+      "correct": 36,
+      "total": 36,
+      "rate": 1.0
+     },
+     "empty_ok": {
+      "correct": 1,
+      "total": 1,
+      "rate": 1.0
+     },
+     "injection_flagged": {
+      "correct": 1,
+      "total": 2,
+      "rate": 0.5
+     },
+     "method": {
+      "correct": 5,
+      "total": 5,
+      "rate": 1.0
+     },
+     "method_not_invented": {
+      "correct": 25,
+      "total": 25,
+      "rate": 1.0
+     },
+     "refund_flagged": {
+      "correct": 0,
+      "total": 2,
+      "rate": 0.0
+     },
+     "type": {
+      "correct": 36,
+      "total": 39,
+      "rate": 0.923
+     }
+    },
+    "latency_ms_p50": 782,
+    "latency_ms_max": 2605,
+    "known_cost_usd": "0.005085872",
+    "unknown_usage_calls": 0,
+    "input_tokens": 109668,
+    "output_tokens": 6947
+   }
+  },
+  "amazon.nova-pro-v1:0": {
+   "text": {
+    "cases_run": 32,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 1,
+    "metrics": {
+     "amount": {
+      "correct": 40,
+      "total": 41,
+      "rate": 0.976
+     },
+     "category_parent": {
+      "correct": 36,
+      "total": 39,
+      "rate": 0.923
+     },
+     "count_ok": {
+      "correct": 31,
+      "total": 32,
+      "rate": 0.969
+     },
+     "currency": {
+      "correct": 40,
+      "total": 41,
+      "rate": 0.976
+     },
+     "date": {
+      "correct": 4,
+      "total": 4,
+      "rate": 1.0
+     },
+     "date_not_invented": {
+      "correct": 36,
+      "total": 36,
+      "rate": 1.0
+     },
+     "empty_ok": {
+      "correct": 1,
+      "total": 1,
+      "rate": 1.0
+     },
+     "injection_flagged": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "method": {
+      "correct": 6,
+      "total": 6,
+      "rate": 1.0
+     },
+     "method_not_invented": {
+      "correct": 24,
+      "total": 28,
+      "rate": 0.857
+     },
+     "refund_flagged": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "type": {
+      "correct": 38,
+      "total": 39,
+      "rate": 0.974
+     }
+    },
+    "latency_ms_p50": 1350,
+    "latency_ms_max": 4449,
+    "known_cost_usd": "0.11398800",
+    "unknown_usage_calls": 0,
+    "input_tokens": 109668,
+    "output_tokens": 6508
+   },
+   "image": {
+    "cases_run": 13,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 0,
+    "metrics": {
+     "amount": {
+      "correct": 11,
+      "total": 12,
+      "rate": 0.917
+     },
+     "category_parent": {
+      "correct": 11,
+      "total": 12,
+      "rate": 0.917
+     },
+     "count_ok": {
+      "correct": 12,
+      "total": 13,
+      "rate": 0.923
+     },
+     "currency": {
+      "correct": 12,
+      "total": 12,
+      "rate": 1.0
+     },
+     "date": {
+      "correct": 8,
+      "total": 9,
+      "rate": 0.889
+     },
+     "date_not_invented": {
+      "correct": 3,
+      "total": 3,
+      "rate": 1.0
+     },
+     "empty_ok": {
+      "correct": 1,
+      "total": 1,
+      "rate": 1.0
+     },
+     "injection_flagged": {
+      "correct": 0,
+      "total": 1,
+      "rate": 0.0
+     },
+     "method": {
+      "correct": 7,
+      "total": 8,
+      "rate": 0.875
+     },
+     "method_not_invented": {
+      "correct": 3,
+      "total": 4,
+      "rate": 0.75
+     },
+     "type": {
+      "correct": 12,
+      "total": 12,
+      "rate": 1.0
+     }
+    },
+    "latency_ms_p50": 1570,
+    "latency_ms_max": 5577,
+    "known_cost_usd": "0.06105624",
+    "unknown_usage_calls": 0,
+    "input_tokens": 62242,
+    "output_tokens": 2611
+   },
+   "all": {
+    "cases_run": 45,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 1,
+    "metrics": {
+     "amount": {
+      "correct": 51,
+      "total": 53,
+      "rate": 0.962
+     },
+     "category_parent": {
+      "correct": 47,
+      "total": 51,
+      "rate": 0.922
+     },
+     "count_ok": {
+      "correct": 43,
+      "total": 45,
+      "rate": 0.956
+     },
+     "currency": {
+      "correct": 52,
+      "total": 53,
+      "rate": 0.981
+     },
+     "date": {
+      "correct": 12,
+      "total": 13,
+      "rate": 0.923
+     },
+     "date_not_invented": {
+      "correct": 39,
+      "total": 39,
+      "rate": 1.0
+     },
+     "empty_ok": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "injection_flagged": {
+      "correct": 2,
+      "total": 3,
+      "rate": 0.667
+     },
+     "method": {
+      "correct": 13,
+      "total": 14,
+      "rate": 0.929
+     },
+     "method_not_invented": {
+      "correct": 27,
+      "total": 32,
+      "rate": 0.844
+     },
+     "refund_flagged": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "type": {
+      "correct": 50,
+      "total": 51,
+      "rate": 0.98
+     }
+    },
+    "latency_ms_p50": 1430,
+    "latency_ms_max": 5577,
+    "known_cost_usd": "0.17504424",
+    "unknown_usage_calls": 0,
+    "input_tokens": 171910,
+    "output_tokens": 9119
+   }
+  }
+ },
+ "rescored": {
+  "commit": "888d6c1b735d850ed62e10cbeb08d389a677d4f6",
+  "dirty_worktree": false
+ }
+}

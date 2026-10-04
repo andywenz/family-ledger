@@ -1,0 +1,121 @@
+{
+ "run_id": "20261004T060649Z",
+ "dry_run": false,
+ "region": "ap-southeast-2",
+ "prompt_version": "v1",
+ "received_date": "2026-10-04",
+ "cases": 1,
+ "models": [
+  "amazon.nova-lite-v1:0"
+ ],
+ "prices": {
+  "amazon.nova-lite-v1:0": {
+   "input_per_m": "0.063",
+   "output_per_m": "0.252",
+   "vision": true,
+   "usagetype": "APS2-NovaLite-input-tokens / APS2-NovaLite-output-tokens",
+   "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/current/ap-southeast-2/index.json (publicationDate 2026-10-03T00:11:38Z)",
+   "verified_at": "2026-10-04"
+  }
+ },
+ "spend": {
+  "budget_usd": "0.05",
+  "known_usd": "0.000198009",
+  "unknown_reserve_usd": "0",
+  "calls": 1,
+  "unknown_usage_calls": 0,
+  "stopped_by_budget": false
+ },
+ "by_model": {
+  "amazon.nova-lite-v1:0": {
+   "text": {
+    "cases_run": 1,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 0,
+    "metrics": {
+     "amount": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "category_parent": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "count_ok": {
+      "correct": 1,
+      "total": 1,
+      "rate": 1.0
+     },
+     "currency": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "type": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     }
+    },
+    "latency_ms_p50": 978,
+    "latency_ms_max": 978,
+    "known_cost_usd": "0.000198009",
+    "unknown_usage_calls": 0,
+    "input_tokens": 2035,
+    "output_tokens": 277
+   },
+   "image": {
+    "cases_run": 0,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 0,
+    "metrics": {},
+    "latency_ms_p50": null,
+    "latency_ms_max": null,
+    "known_cost_usd": "0",
+    "unknown_usage_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   },
+   "all": {
+    "cases_run": 1,
+    "cases_not_run": 0,
+    "protocol_or_request_failures": 0,
+    "metrics": {
+     "amount": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "category_parent": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "count_ok": {
+      "correct": 1,
+      "total": 1,
+      "rate": 1.0
+     },
+     "currency": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     },
+     "type": {
+      "correct": 2,
+      "total": 2,
+      "rate": 1.0
+     }
+    },
+    "latency_ms_p50": 978,
+    "latency_ms_max": 978,
+    "known_cost_usd": "0.000198009",
+    "unknown_usage_calls": 0,
+    "input_tokens": 2035,
+    "output_tokens": 277
+   }
+  }
+ }
+}

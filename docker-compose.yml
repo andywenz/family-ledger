@@ -1,0 +1,10 @@
+# 本地开发依赖（ADR-0007）。仅用于 LEDGER_ENV=local；不是生产配置。
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/data"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./.local-data/dynamodb:/data
+    user: root

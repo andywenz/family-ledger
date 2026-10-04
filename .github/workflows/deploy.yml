@@ -1,0 +1,68 @@
+# 部署：手动触发；只部署 CI 已检查并上传的制品（不本地重建），部署后读回版本（ISE-027；OPS-08）。
+# 需要：GitHub environment "production"（必需审批人）、仓库变量 AWS_DEPLOY_ROLE_ARN／AWS_ACCOUNT_ID／SITE_DOMAIN。
+# 尚未启用：真实部署需用户对目标账户与具体动作授权（开发交接 D5）。
+name: deploy
+on:
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: CI 运行 ID（其制品将被部署）
+        required: true
+      commit:
+        description: 该 CI 运行检查的 commit SHA
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # GitHub OIDC → AWS 部署角色，无长期密钥
+  actions: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment: production
+    concurrency: production
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.commit }}
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: release-${{ inputs.commit }}
+          run-id: ${{ inputs.ci_run_id }}
+          github-token: ${{ github.token }}
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - name: 发布门禁：制品摘要、commit 绑定、无本地替身
+        run: uv run python scripts/verify_artifact.py dist/lambda.zip dist/manifest.json --expect-commit "${{ inputs.commit }}"
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-southeast-2
+      - name: 核对目标账户
+        run: |
+          test "$(aws sts get-caller-identity --query Account --output text)" = "${{ vars.AWS_ACCOUNT_ID }}"
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: CDK diff（记录到运行日志供审阅）
+        working-directory: infra
+        run: pnpm exec cdk diff -c account=${{ vars.AWS_ACCOUNT_ID }} -c siteDomain=${{ vars.SITE_DOMAIN }} -c artifactZip=../dist/lambda.zip -c artifactManifest=../dist/manifest.json
+      - name: CDK deploy
+        working-directory: infra
+        run: pnpm exec cdk deploy --all --require-approval never -c account=${{ vars.AWS_ACCOUNT_ID }} -c siteDomain=${{ vars.SITE_DOMAIN }} -c artifactZip=../dist/lambda.zip -c artifactManifest=../dist/manifest.json --outputs-file ../dist/outputs.json
+      - name: 发布前端
+        run: |
+          BUCKET=$(python3 -c "import json;d=json.load(open('dist/outputs.json'));print(next(v['SiteBucket'] for v in d.values() if 'SiteBucket' in v))")
+          aws s3 sync frontend/dist "s3://${BUCKET}" --delete
+      - name: 读回部署版本
+        run: |
+          curl -fsS "https://${{ vars.SITE_DOMAIN }}/v1/health" -o health.json
+          python3 - <<'PY'
+          import json
+          h = json.load(open("health.json")); m = json.load(open("dist/manifest.json"))
+          assert h["commit"] == m["commit"] and h["artifact_digest"] == m["sha256"], (h, m)
+          print("已部署版本与制品一致：", h["commit"], h["artifact_digest"])
+          PY

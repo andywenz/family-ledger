@@ -1,0 +1,72 @@
+[project]
+name = "family-ledger"
+version = "0.1.0"
+description = "家庭记账本后端：业务核心、Lambda 入口与适配器"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "jsonschema>=4.23",
+    "referencing>=0.35",
+    "pyyaml>=6",
+    "boto3>=1.35",
+    "openpyxl>=3.1",
+    "pillow>=11",
+    "pyjwt[crypto]>=2.9",
+    "httpx>=0.27",
+    "cryptography>=43",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "hypothesis>=6",
+    "openapi-spec-validator>=0.7",
+    "types-pyyaml>=6",
+    "types-jsonschema>=4",
+    "ruff>=0.7",
+    "mypy>=1.13",
+    "uvicorn>=0.32",
+    "starlette>=0.41",
+    "moto[dynamodb,s3]>=5",
+    "python-multipart>=0.0.32",
+    "botocore[crt]>=1.43.108",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/src/ledger"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["backend/src"]
+filterwarnings = ["ignore::DeprecationWarning:starlette.testclient"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["backend/src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "DTZ"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+# 测试：允许调用本地 docker 命令与合成凭证
+"tests/**" = ["S603", "S607", "S105", "S106"]
+# Prompt 为自然语言长文本
+"backend/src/ledger/ai/prompt.py" = ["E501"]
+# 构建脚本只以固定参数调用本机 git／uv
+"scripts/**" = ["S603", "S607"]
+# 本地飞书替身的固定假值（非真实凭证；ledger.local 不进入生产构建）
+"backend/src/ledger/local/feishu.py" = ["S106"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "backend/src"
+
+[[tool.mypy.overrides]]
+module = ["boto3.*", "botocore.*", "openpyxl.*"]
+ignore_missing_imports = true

@@ -1,0 +1,20 @@
+{
+  "amazon.nova-micro-v1:0": {
+    "input_per_m": "0.037", "output_per_m": "0.148", "vision": false,
+    "usagetype": "APS2-NovaMicro-input-tokens / APS2-NovaMicro-output-tokens",
+    "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/current/ap-southeast-2/index.json (publicationDate 2026-10-03T00:11:38Z)",
+    "verified_at": "2026-10-04"
+  },
+  "amazon.nova-lite-v1:0": {
+    "input_per_m": "0.063", "output_per_m": "0.252", "vision": true,
+    "usagetype": "APS2-NovaLite-input-tokens / APS2-NovaLite-output-tokens",
+    "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/current/ap-southeast-2/index.json (publicationDate 2026-10-03T00:11:38Z)",
+    "verified_at": "2026-10-04"
+  },
+  "amazon.nova-pro-v1:0": {
+    "input_per_m": "0.84", "output_per_m": "3.36", "vision": true,
+    "usagetype": "APS2-NovaPro-input-tokens / APS2-NovaPro-output-tokens",
+    "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/current/ap-southeast-2/index.json (publicationDate 2026-10-03T00:11:38Z)",
+    "verified_at": "2026-10-04"
+  }
+}

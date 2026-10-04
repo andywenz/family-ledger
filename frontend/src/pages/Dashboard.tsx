@@ -1,0 +1,244 @@
+import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
+import { ApiError, api, type Dashboard as DashboardData, type Entry } from "../api/client";
+import { EntryDialog } from "../components/EntryDialog";
+import { ErrorNotice, PageHeading, useLoad, useToast } from "../components/common";
+import { Icon } from "../components/Icon";
+import { useFamily } from "../components/Layout";
+import { currentMonth, money, monthLabel, shiftMonth, shortDate } from "../lib/format";
+import { ENTRY_TYPES, METHODS, METHOD_LABEL, TYPE_LABEL } from "../lib/labels";
+
+const PIE_COLORS = ["#7c9566", "#bcb59a", "#d09b79", "#b7c7ae", "#9bafac", "#d9d8bd", "#8fa58a", "#c9a98a", "#a7b49b"];
+
+export default function Dashboard() {
+  const fam = useFamily();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const month = params.get("month") ?? currentMonth(fam.config.timezone);
+  const filters = {
+    created_by: params.get("created_by") ?? undefined,
+    type: params.get("type") ?? undefined,
+    category_id: params.get("category_id") ?? undefined,
+    payment_method: params.get("payment_method") ?? undefined,
+  };
+  const [openEntry, setOpenEntry] = useState<Entry | null>(null);
+  const toast = useToast();
+
+  const { data, error, reload } = useLoad(async () => {
+    const [summary, first] = await Promise.all([
+      api.get<DashboardData>(`/families/${fam.fid}/dashboard`, { month, ...filters }),
+      api.get<{ items: Entry[]; next_cursor?: string; data_version: string }>(`/families/${fam.fid}/entries`, { month, page_size: 100, ...filters }),
+    ]);
+    let items = first.items;
+    let cursor = first.next_cursor;
+    while (cursor) {
+      const next = await api.get<{ items: Entry[]; next_cursor?: string }>(`/families/${fam.fid}/entries`, { month, page_size: 100, cursor, ...filters });
+      items = items.concat(next.items);
+      cursor = next.next_cursor;
+    }
+    return { summary, items };
+  }, [fam.fid, month, params.toString()]);
+
+  const setParam = (k: string, v?: string) => {
+    const next = new URLSearchParams(params);
+    if (v) next.set(k, v);
+    else next.delete(k);
+    setParams(next);
+  };
+
+  async function exportFile(format: "csv" | "xlsx") {
+    try {
+      const job = await api.post<{ download_url?: string }>(`/families/${fam.fid}/exports`, {
+        format, month, filters: Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
+      });
+      if (job.download_url) window.location.href = job.download_url;
+    } catch (e) {
+      toast.show(e instanceof ApiError ? e.message : "导出失败");
+    }
+  }
+
+  const s = data?.summary;
+  const pie = s?.category_pie;
+  let at = 0;
+  const gradient = pie?.slices.map((sl, i) => {
+    const start = at;
+    at += Number(sl.share_percent);
+    return `${PIE_COLORS[i % PIE_COLORS.length]} ${start}% ${at}%`;
+  }).join(",");
+  const activeFilters = Object.entries(filters).filter(([, v]) => v);
+
+  return (
+    <>
+      <PageHeading
+        eyebrow="A LITTLE LOOK AT OUR MONTH"
+        title="生活的每一笔，都在这里。"
+        subtitle="一起记录收入与开销，也给生活留一点余地。"
+        actions={
+          <>
+            <div className="month-picker">
+              <button className="icon-button" aria-label="上个月" onClick={() => setParam("month", shiftMonth(month, -1))}><Icon name="left" /></button>
+              <strong>{monthLabel(month)}</strong>
+              <button className="icon-button" aria-label="下个月" onClick={() => setParam("month", shiftMonth(month, 1))}><Icon name="right" /></button>
+            </div>
+            <button className="button primary" onClick={() => navigate(`/f/${fam.fid}/new`)}><Icon name="plus" />记一笔</button>
+          </>
+        }
+      />
+      <ErrorNotice error={error} onRetry={reload} />
+      {s && (
+        <>
+          <section className="summary-grid" aria-label="本月收支">
+            <article className="card spending-hero">
+              <div className="card-label">本月净支出 <Icon name="wallet" /></div>
+              <div className="currency-kicker">NEW ZEALAND DOLLAR</div>
+              <div className="number"><small>$</small>{money(s.totals.net_expense.nzd)}</div>
+              <div className="secondary-amount">合 CNY ¥ {money(s.totals.net_expense.cny)}</div>
+              <div className="card-footnote"><span className="dot"></span>消费 ${money(s.totals.expense_gross.nzd)} · 退款 ${money(s.totals.refund.nzd)}</div>
+            </article>
+            <article className="card regular-summary">
+              <div className="card-label">本月收入 <Icon name="income" /></div>
+              <div className="currency-kicker">NZD</div>
+              <div className="number"><small>$</small>{money(s.totals.income.nzd)}</div>
+              <div className="secondary-amount">合 CNY ¥ {money(s.totals.income.cny)}</div>
+              <div className="card-footnote">记下每一份努力与心意</div>
+            </article>
+            <article className="card regular-summary">
+              <div className="card-label">本月结余 <Icon name="leaf" /></div>
+              <div className="currency-kicker">NZD</div>
+              <div className="number"><small>$</small>{money(s.totals.balance.nzd)}</div>
+              <div className="secondary-amount">合 CNY ¥ {money(s.totals.balance.cny)}</div>
+              <div className="card-footnote">收入 − 净支出 · 不等于账户余额</div>
+            </article>
+          </section>
+          <section className="overview-grid">
+            <article className="card">
+              <div className="section-head"><h2>钱花在了哪里</h2><small>一级分类 · 合 NZD</small></div>
+              <div className="chart-body">
+                <div className="donut" role="img" aria-label="各分类净支出占比" style={{ background: gradient ? `conic-gradient(${gradient})` : "#ecf0e5" }}>
+                  <div className="donut-center">正净支出合计<strong>${money(pie!.denominator)}</strong>{pie!.slices.length} 个分类</div>
+                </div>
+                <div className="legend">
+                  {pie!.empty && <p className="muted">这个月没有正净支出的分类。</p>}
+                  {pie!.slices.map((sl, i) => (
+                    <div key={sl.category_id} className="legend-row">
+                      <i className="legend-dot" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}></i>
+                      <span>{sl.name}</span><b>{sl.share_percent}%</b>
+                    </div>
+                  ))}
+                  {pie!.negatives.length > 0 && (
+                    <div className="negatives">
+                      <small>净额为负（退款多于消费），不计入饼图：</small>
+                      {pie!.negatives.map((n) => <div key={n.category_id} className="legend-row"><span>{n.name}</span><b>${money(n.net)}</b></div>)}
+                    </div>
+                  )}
+                  {!pie!.empty && <p className="tiny-note">饼图分母为所有正净支出分类之和，可能不同于净支出总额。</p>}
+                </div>
+              </div>
+            </article>
+            <article className="card">
+              <div className="section-head"><h2>消费方式</h2><small>扣除对应退款 · 不含收入</small></div>
+              {s.by_payment_method.map((m) => (
+                <div key={m.payment_method} className="payment-row">
+                  <div className="payment-icon"><Icon name={m.payment_method === "cash" ? "cash" : m.payment_method === "credit_card" ? "card" : "wallet"} /></div>
+                  <div className="payment-label">{METHOD_LABEL[m.payment_method]}<small>{m.expense_count} 笔消费 · {m.refund_count} 笔退款</small></div>
+                  <div className="payment-amount"><strong>NZD ${money(m.net.nzd)}</strong><small>CNY ¥{money(m.net.cny)}</small></div>
+                </div>
+              ))}
+            </article>
+          </section>
+          <section className="card ledger-card">
+            <div className="ledger-top">
+              <h2>本月明细<small>{data!.items.length} 笔记录</small></h2>
+              <div className="filters">
+                <select aria-label="筛选类型" value={filters.type ?? ""} onChange={(e) => setParam("type", e.target.value)}>
+                  <option value="">全部类型</option>
+                  {ENTRY_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <select aria-label="筛选成员" value={filters.created_by ?? ""} onChange={(e) => setParam("created_by", e.target.value)}>
+                  <option value="">所有成员</option>
+                  {fam.members.map((m) => <option key={m.user_id} value={m.user_id}>{m.display_name}{m.status !== "active" ? "（已离开）" : ""}</option>)}
+                </select>
+                <select aria-label="筛选分类" value={filters.category_id ?? ""} onChange={(e) => setParam("category_id", e.target.value)}>
+                  <option value="">所有分类</option>
+                  {fam.categories.groups.map((g) => (
+                    <optgroup key={g.category_id} label={g.name}>
+                      <option value={g.category_id}>{g.name}（全部）</option>
+                      {g.children.map((c) => <option key={c.category_id} value={c.category_id}>{c.name}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+                <select aria-label="筛选方式" value={filters.payment_method ?? ""} onChange={(e) => setParam("payment_method", e.target.value)}>
+                  <option value="">所有方式</option>
+                  {METHODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <button className="icon-button" aria-label="导出 CSV" title="导出 CSV" onClick={() => void exportFile("csv")}><Icon name="download" /></button>
+                <button className="button secondary small" onClick={() => void exportFile("xlsx")}>Excel</button>
+              </div>
+            </div>
+            {activeFilters.length > 0 && (
+              <p className="filter-note">当前筛选：{activeFilters.map(([k, v]) => `${FILTER_LABEL[k]}=${labelFor(k, v!, fam)}`).join("，")}。汇总、图表与导出使用同一范围。<button className="text-button" onClick={() => setParams(new URLSearchParams({ month }))}>清除</button></p>
+            )}
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>日期</th><th>类型</th><th>一级分类</th><th>二级分类</th><th>币种</th>
+                    <th className="numeric">原始金额</th><th className="numeric">合 NZD</th><th className="numeric">合 CNY</th>
+                    <th>备注</th><th>方式</th><th>录入人</th><th><span className="sub-label">操作</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data!.items.map((e) => (
+                    <tr key={e.entry_id}>
+                      <td>{shortDate(e.business_date)}</td>
+                      <td><span className="badge">{TYPE_LABEL[e.type]}</span>{!e.counts_in_stats && <small className="no-stat">不计收支</small>}</td>
+                      <td>{e.category.parent_name}</td>
+                      <td>{e.category.leaf_name}</td>
+                      <td>{e.currency}</td>
+                      <td className="numeric">{money(e.amount)}</td>
+                      <td className="numeric">{money(e.display_amounts.nzd)}</td>
+                      <td className="numeric">{money(e.display_amounts.cny)}</td>
+                      <td className="note-cell">{e.note}{e.attachments.length > 0 && <span title="有照片"> 📎</span>}</td>
+                      <td>{e.payment_method ? METHOD_LABEL[e.payment_method] : "—"}</td>
+                      <td>{e.created_by_display}{e.created_by_left && <small>（已离开）</small>}</td>
+                      <td>
+                        <div className="row-actions">
+                          <button className="edit-row" onClick={() => setOpenEntry(e)} aria-label={`查看或编辑 ${e.note || e.category.leaf_name}`}><Icon name="edit" />{e.can_edit ? "编辑" : "查看"}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {data!.items.length === 0 && <tr><td colSpan={12} className="empty">还没有符合条件的记录。</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div className="ledger-bottom"><span>按业务日期从新到旧 · 金额为记账时的汇率快照</span><span>共 {data!.items.length} 笔</span></div>
+          </section>
+        </>
+      )}
+      {openEntry && (
+        <EntryDialog entry={openEntry} onClose={() => setOpenEntry(null)} onChanged={(msg, moved) => {
+          setOpenEntry(null);
+          toast.show(msg);
+          if (moved && moved !== month) setParam("month", moved);
+          else void reload();
+        }} />
+      )}
+      {toast.node}
+    </>
+  );
+}
+
+const FILTER_LABEL: Record<string, string> = { created_by: "录入人", type: "类型", category_id: "分类", payment_method: "方式" };
+
+function labelFor(k: string, v: string, fam: ReturnType<typeof useFamily>): string {
+  if (k === "type") return TYPE_LABEL[v] ?? v;
+  if (k === "payment_method") return METHOD_LABEL[v] ?? v;
+  if (k === "created_by") return fam.members.find((m) => m.user_id === v)?.display_name ?? v;
+  for (const g of fam.categories.groups) {
+    if (g.category_id === v) return g.name;
+    const c = g.children.find((x) => x.category_id === v);
+    if (c) return `${g.name}／${c.name}`;
+  }
+  return v;
+}

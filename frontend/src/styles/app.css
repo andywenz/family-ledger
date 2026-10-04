@@ -1,0 +1,67 @@
+/* 正式应用在原型基础上新增的样式（保持暖白／深绿与高对比表格）。 */
+.center-page{min-height:100vh;display:grid;place-items:center;color:var(--muted)}
+.auth-page{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--paper)}
+.auth-card{width:min(420px,100%);display:flex;flex-direction:column;gap:14px}
+.auth-card h1{font-size:24px;margin:8px 0 0}
+.auth-card .button{width:100%}
+.form-error{color:#8a2f1d;background:#f8eae7;border:1px solid #ecc9c1;border-radius:8px;padding:8px 12px;margin:0;font-size:13px}
+.local-tag{background:#fff3df;border-color:#f0d6a8;color:#7a5418}
+.local-tag i{background:#c98a2b}
+.family-select{flex:1;min-width:0}
+.family-select select{width:100%;border:0;background:transparent;font-weight:600;font-size:13px;color:var(--ink);padding:0;appearance:none;cursor:pointer}
+.error-notice{background:#f8eae7;border-color:#ecc9c1;color:#6d2416}
+.error-notice ul{margin:6px 0 0;padding-left:18px}
+.unknown-notice{background:#fff3df;border-color:#f0d6a8;color:#5c3d0e}
+.form-actions.compact{margin-top:8px;justify-content:flex-start}
+.button.small{min-height:30px;padding:5px 10px;font-size:12px}
+.button.danger{color:#8a2f1d;border-color:#ecc9c1}
+.button.primary.danger{background:#8a2f1d;color:#fff;border-color:#8a2f1d}
+.no-stat{display:block;font-size:11px;color:#606060}
+.note-cell{max-width:260px;white-space:normal;word-break:break-word}
+.filter-note{font-size:13px;color:#404040;background:#f6f6f6;border-radius:8px;padding:8px 12px;margin:0 0 12px}
+.negatives{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.negatives small{display:block;color:var(--muted);margin-bottom:4px}
+.detail-list{display:grid;grid-template-columns:96px 1fr;gap:8px 12px;margin:0 0 16px;font-size:14px}
+.detail-list dt{color:#606060}
+.detail-list dd{margin:0;color:#171717}
+.detail-list .pre{white-space:pre-wrap;word-break:break-word}
+.photo-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.upload-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.upload-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:12px;background:#fafbf6}
+.upload-chip.rejected{border-color:#ecc9c1;background:#f8eae7;color:#6d2416}
+.upload-chip button{border:0;background:none;font-size:14px;line-height:1;color:inherit}
+.upload-button{display:inline-flex;align-items:center;gap:6px;border:1px dashed #b7c3b0;border-radius:20px;padding:4px 12px;font-size:12px;cursor:pointer}
+.small-strong{font-size:12px!important;padding-top:4px}
+.tiny-note.warn,.warn{color:#7a4a12}
+.member-row.as-button{width:100%;border:0;background:none;text-align:left;cursor:pointer}
+.member-row .row-actions{margin-left:auto}
+.kind-tabs{display:flex;flex-wrap:wrap;max-width:none;gap:4px;margin:16px 0 8px}
+.kind-tabs button{flex:0 0 auto}
+.inline-check{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:12px}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px}
+.recompute-preview{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fafbf6}
+.secret-notice code{display:block;font-size:20px;letter-spacing:1px;margin:8px 0;padding:8px 12px;background:#fff;border:1px solid var(--line);border-radius:8px;user-select:all}
+#record-dialog.wide{max-width:860px}
+.entry-form .field{margin-bottom:12px}
+@media(max-width:650px){.detail-list{grid-template-columns:80px 1fr}.member-row{flex-wrap:wrap}}
+/* 手机：底部导航只放主要入口，其余进入“更多”（原型隐藏了家庭切换与退出入口） */
+.nav-secondary{display:contents}
+.nav-more{display:none}
+.more-sheet{display:flex;flex-direction:column;gap:6px}
+.more-sheet a{display:flex;gap:10px;align-items:center;padding:12px 10px;border-radius:10px;color:#171717;font-size:15px}
+.more-sheet a:hover,.more-sheet a.active{background:#f0f0f0}
+@media(max-width:650px){
+ .nav-secondary,nav>.nav-label{display:none}
+ .nav-more{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;padding:8px 7px;min-width:55px;font-size:11px;color:#53684a}
+ .nav-more svg{height:19px;width:19px}
+}
+/* AI 候选 */
+.field-tag{display:inline-block;margin-left:6px;font-size:11px;padding:0 6px;border-radius:10px;background:#eef2e6;color:#4d6440;vertical-align:middle}
+.field-tag.family_default,.field-tag.request_date{background:#eef2e6;color:#4d6440}
+.field-tag.inferred,.field-tag.review{background:#fff3df;color:#7a4a12}
+.candidate-card{margin-bottom:14px}
+.candidate-card.confirmed{opacity:.6}
+.candidate-card.needs_update{border-color:#f0d6a8}
+.candidate-card .inline-check{margin:0;gap:10px}
+.candidate-card .inline-check h3{margin:0}
+.review-state{font-size:12px;color:#7a5418;background:#fff3df;border:1px solid #f0d6a8;border-radius:20px;padding:2px 10px}

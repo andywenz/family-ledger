@@ -1,0 +1,19 @@
+{
+  "name": "@family-ledger/infra",
+  "private": true,
+  "scripts": {
+    "synth": "cdk synth",
+    "check": "tsc --noEmit",
+    "test": "node -r ts-node/register --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "aws-cdk": "^2.1144.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.272.0",
+    "constructs": "^10.8.1"
+  }
+}

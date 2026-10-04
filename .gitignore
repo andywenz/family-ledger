@@ -1,0 +1,36 @@
+# 私人交接资料：含账号标识、域名与私人事项，不进入版本库
+/ledger需求文档集/
+# 私人运行配置（初始账号、邮箱、账户 ID 等）
+/config/private/
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+cdk.out/
+
+# 本地数据
+/.local-data/
+*.sqlite
+
+.DS_Store
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+
+/dist/
+/build/
