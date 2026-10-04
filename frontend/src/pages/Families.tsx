@@ -33,7 +33,7 @@ export default function Families() {
 
   return (
     <PlainShell title="我的家庭">
-      <PageHeading eyebrow="OUR HOMES" title="选择一个家庭账本。" subtitle="一个账号可以加入多个家庭；每个家庭的账目彼此独立。" />
+      <PageHeading title="选择家庭" subtitle="一个账号可以加入多个家庭；每个家庭的账目彼此独立。" />
       <div className="settings-grid">
         <section className="card">
           <div className="section-head"><h2>我的家庭</h2></div>

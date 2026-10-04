@@ -47,7 +47,7 @@ function Shell({ breadcrumb, familyName, children, fid }: { breadcrumb: string; 
       <aside className="sidebar">
         <a className="brand" href="/">
           <span className="brand-mark">家</span>
-          <span>小家账本<small>OUR DAILY LEDGER</small></span>
+          <span>小家账本</span>
         </a>
         <label className="family-switch">
           <span className="family-avatar">⌂</span>
@@ -110,10 +110,6 @@ function Shell({ breadcrumb, familyName, children, fid }: { breadcrumb: string; 
           </div>
         </header>
         <main>{children}</main>
-        <footer className="site-footer">
-          <span>小家账本 · 好好生活，慢慢记录</span>
-          <span>金额以记账日期汇率快照折算</span>
-        </footer>
       </div>
       {more && (
         <Modal title="更多" onClose={() => setMore(false)}>

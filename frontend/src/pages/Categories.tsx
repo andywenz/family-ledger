@@ -26,7 +26,7 @@ export default function Categories() {
   const base = `/families/${fam.fid}/categories`;
   return (
     <>
-      <PageHeading eyebrow="A PLACE FOR EVERY LITTLE THING" title="给每一笔，找个位置。" subtitle="改名或移动会同步更新历史账目的显示，金额与汇率不变。"
+      <PageHeading title="分类管理" subtitle="改名或移动会同步更新历史账目的显示，金额与汇率不变。"
         actions={isAdmin ? <button className="button primary" onClick={() => { setValue(""); setEdit({ cat: { category_id: "", kind: kind as Category["kind"], name: "", status: "active", sort: 0, version: 1 }, mode: "add" }); }}><Icon name="plus" />新增一级分类</button> : undefined} />
       <div className="notice"><Icon name="info" /><div>已被账目使用的分类不能直接删除：请先合并到其他分类，或停用（历史仍可查看，新账目不能选择）。{!isAdmin && " 只有家庭管理员可以修改分类。"}</div></div>
       <div className="tabs kind-tabs">

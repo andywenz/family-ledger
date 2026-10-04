@@ -20,7 +20,7 @@ export default function AdminUsers() {
 
   return (
     <PlainShell title="系统账号">
-      <PageHeading eyebrow="SYSTEM ADMIN" title="系统账号" subtitle="没有公开注册。系统管理员创建账号并私下交付临时密码；首次登录必须修改。" />
+      <PageHeading title="系统账号" subtitle="没有公开注册。系统管理员创建账号并私下交付临时密码；首次登录必须修改。" />
       <ErrorNotice error={users.error ?? action.error} />
       {secret && (
         <div className="notice secret-notice" role="alert">

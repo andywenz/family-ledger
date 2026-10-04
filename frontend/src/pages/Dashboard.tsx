@@ -74,9 +74,8 @@ export default function Dashboard() {
   return (
     <>
       <PageHeading
-        eyebrow="A LITTLE LOOK AT OUR MONTH"
-        title="生活的每一笔，都在这里。"
-        subtitle="一起记录收入与开销，也给生活留一点余地。"
+        title="月度总览"
+        subtitle="这个月花在哪里、怎么付的；点任意一笔可以查看或修改。"
         actions={
           <>
             <div className="month-picker">
@@ -95,7 +94,6 @@ export default function Dashboard() {
           <section className="dashboard-top" aria-label="本月概览">
             <article className="card spending-hero">
               <div className="card-label">本月净支出 <Icon name="wallet" /></div>
-              <div className="currency-kicker">NEW ZEALAND DOLLAR</div>
               <div className="number"><small>$</small>{money(s.totals.net_expense.nzd)}</div>
               <div className="secondary-amount">合 CNY ¥ {money(s.totals.net_expense.cny)}</div>
               <div className="card-footnote"><span className="dot"></span>消费 ${money(s.totals.expense_gross.nzd)} · 退款 ${money(s.totals.refund.nzd)}</div>
@@ -179,7 +177,7 @@ export default function Dashboard() {
                   <tr>
                     <th>日期</th><th>类型</th><th>一级分类</th><th>二级分类</th><th>币种</th>
                     <th className="numeric">原始金额</th><th className="numeric">合 NZD</th><th className="numeric">合 CNY</th>
-                    <th>备注</th><th>方式</th><th>录入人</th><th><span className="sub-label">操作</span></th>
+                    <th>备注</th><th>方式</th><th>录入人</th><th>操作</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -19,7 +19,7 @@ export default function Account() {
 
   return (
     <PlainShell title="我的账号">
-      <PageHeading eyebrow="MY ACCOUNT" title="我的账号" subtitle="登录名用于登录；显示名出现在账目的“录入人”。" />
+      <PageHeading title="我的账号" subtitle="登录名用于登录；显示名出现在账目的“录入人”。" />
       <div className="settings-grid">
         <section className="card">
           <div className="section-head"><h2>资料</h2></div>

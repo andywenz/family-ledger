@@ -22,7 +22,7 @@ export default function Trash() {
 
   return (
     <>
-      <PageHeading eyebrow="TRASH" title="回收站" subtitle="删除的账目保留 30 天，期间可以恢复；之后会被清理，照片无其他引用时一并删除。" />
+      <PageHeading title="回收站" subtitle="删除的账目保留 30 天，期间可以恢复；之后会被清理，照片无其他引用时一并删除。" />
       <ErrorNotice error={error ?? action.error} onRetry={reload} />
       <UnknownPanel action={action as never} onCommitted={() => void reload()} onRetry={() => { if (pending.current) void restore(pending.current); }} />
       <section className="card ledger-card">

@@ -35,7 +35,7 @@ export default function FamilySettings() {
 
   return (
     <>
-      <PageHeading eyebrow="OUR HOME, OUR WAY" title="这是我们的小账本。" subtitle="管理家庭成员与默认设置。" />
+      <PageHeading title="家庭与设置" subtitle="管理成员、邀请新成员，设定默认币种和付款方式。" />
       <ErrorNotice error={action.error} />
       <div className="settings-grid">
         <div>

@@ -220,7 +220,7 @@ export default function AiEntry() {
   const b = batch.data;
   return (
     <>
-      <PageHeading eyebrow="LESS TYPING, MORE LIVING" title="说一句，帮你记好。" subtitle="你负责生活，AI 帮你整理。确认之后，才会记入账本。" />
+      <PageHeading title="AI 帮我记" subtitle="说一句话或拍一张小票，AI 整理成账目，你确认后才会入账。" />
       <div className="two-column">
         <section className="card">
           {!b && (
@@ -293,7 +293,6 @@ export default function AiEntry() {
         </section>
         <aside>
           <section className="card aside-note">
-            <div className="eyebrow">OPEN BATCHES</div>
             <h3>未处理的识别</h3>
             {batches.data?.items.length === 0 && <p className="muted">暂无。</p>}
             {batches.data?.items.map((x) => (

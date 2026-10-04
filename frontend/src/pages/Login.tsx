@@ -47,7 +47,7 @@ export function Login() {
     <div className="auth-page">
       <div className="auth-theme"><ThemeSwitcher /></div>
       <form className="card auth-card" onSubmit={submit}>
-        <div className="brand"><span className="brand-mark">家</span><span>小家账本<small>OUR DAILY LEDGER</small></span></div>
+        <div className="brand"><span className="brand-mark">家</span><span>小家账本</span></div>
         <h1>登录</h1>
         {env === "local" && <p className="preview-tag local-tag"><i></i>本地开发模式</p>}
         <label className="field">登录名<input autoComplete="username" value={loginName} onChange={(e) => setLoginName(e.target.value)} required /></label>

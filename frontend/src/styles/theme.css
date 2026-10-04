@@ -255,3 +255,14 @@ html[data-theme] #record-dialog input,html[data-theme] #record-dialog select,htm
 html[data-theme] #record-dialog .tiny-note{color:var(--muted)}
 html[data-theme] #record-dialog .conversion-strip{background:var(--surface-2);color:var(--muted)}
 html[data-theme] #record-dialog .conversion-strip strong{color:var(--ink)}
+
+/* ── 克制动效与装饰（2026-10-05 设计审视） ──
+   去掉每次换页的淡入上移、所有按钮悬停上浮、净支出卡片上的同心圆装饰：不服务任何信息或操作。
+   保留由操作触发的反馈（切换风格的颜色过渡、对话框、提示条）。 */
+html[data-theme] main{animation:none}
+html[data-theme] .button:hover{transform:none}
+html[data-theme] .spending-hero:after{display:none}
+/* 触控目标：手机上风格切换按钮不小于 40px */
+@media(max-width:650px){.theme-switch button{min-height:40px;min-width:40px;justify-content:center}}
+/* 手机明细表：备注列给最小宽度，避免被挤成一字一行把每行撑得很高（表格本身可横向滚动） */
+@media(max-width:650px){html[data-theme] td.note-cell{min-width:150px}html[data-theme] td{padding:12px 12px}}

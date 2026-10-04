@@ -21,7 +21,7 @@ export default function Rates() {
 
   return (
     <>
-      <PageHeading eyebrow="CURRENCIES & RATES" title="币种与汇率" subtitle="以美元为基准：一单位币种可兑换多少 USD。历史账目保留入账时的快照。" />
+      <PageHeading title="币种与汇率" subtitle="以美元为基准：一单位币种可兑换多少 USD。历史账目保留入账时的快照。" />
       <ErrorNotice error={action.error} />
       <div className="settings-grid">
         <section className="card">

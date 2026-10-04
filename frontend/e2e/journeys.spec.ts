@@ -45,7 +45,7 @@ test("首次登录→创建家庭→记一笔→编辑→退款→删除恢复",
   await page.goto("/families");
   await page.getByLabel("新家庭名称").fill(`家-${project}`);
   await page.getByRole("button", { name: "创建家庭" }).click();
-  await expect(page.getByRole("heading", { name: "生活的每一笔，都在这里。" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "月度总览" })).toBeVisible();
   await expect(page.getByText("还没有符合条件的记录。")).toBeVisible();
   await noHorizontalOverflow(page);
   await shot(page, "01-dashboard-empty", project);
@@ -138,9 +138,9 @@ test("系统管理员建账号→成员首次登录→邀请加入→成员只�
   const ctx2 = await browser.newContext(info.project.use);
   const member = await ctx2.newPage();
   await firstLogin(member, memberLogin, temp, "Member-pass-2026");
-  await expect(member.getByRole("heading", { name: "选择一个家庭账本。" })).toBeVisible();
+  await expect(member.getByRole("heading", { name: "选择家庭" })).toBeVisible();
   await member.getByRole("button", { name: "加入" }).click();
-  await expect(member.getByRole("heading", { name: "生活的每一笔，都在这里。" })).toBeVisible();
+  await expect(member.getByRole("heading", { name: "月度总览" })).toBeVisible();
   // 管理员录入的账目：成员只能“查看”，没有编辑按钮
   await expect(member.getByRole("button", { name: /查看或编辑/ }).first()).toContainText("查看");
   await member.getByRole("button", { name: /查看或编辑/ }).first().click();

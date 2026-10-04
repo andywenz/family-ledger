@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { ApiError, UnknownOutcome, api, newKey } from "../api/client";
 import { Icon } from "./Icon";
 
-export function PageHeading({ eyebrow, title, subtitle, actions }: { eyebrow: string; title: string; subtitle?: string; actions?: ReactNode }) {
+/** 页面标题：直接写页面名称，副标题说明这页能做什么（不加装饰性的英文眉标）。 */
+export function PageHeading({ title, subtitle, actions }: { eyebrow?: string; title: string; subtitle?: string; actions?: ReactNode }) {
   return (
     <div className="page-heading">
       <div>
-        <div className="eyebrow">{eyebrow}</div>
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </div>

@@ -12,7 +12,7 @@ export default function AdminCosts() {
   const c = costs.data;
   return (
     <PlainShell title="费用与告警">
-      <PageHeading eyebrow="COSTS" title="费用与告警" subtitle="预算 NZD 15／月；达到 80%、100% 时通知，服务不会自动暂停。" />
+      <PageHeading title="费用与告警" subtitle="预算 NZD 15／月；达到 80%、100% 时通知，服务不会自动暂停。" />
       <ErrorNotice error={costs.error ?? alerts.error} />
       {c && (
         <div className="settings-grid">
