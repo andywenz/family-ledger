@@ -9,14 +9,19 @@ let changed = false;
 /** 桌面用侧边栏，手机用“更多”菜单切换家庭并进入二级页面。 */
 async function openFamilyPage(page: import("@playwright/test").Page, familyName: string, linkName: string) {
   if (test.info().project.name === "mobile") {
-    await page.getByRole("button", { name: "更多" }).click();
-    const current = await page.locator(".breadcrumb").textContent();
-    if (!current?.includes(familyName)) {
-      await page.getByLabel("手机切换家庭").selectOption({ label: familyName });
-      await expect(page.locator(".breadcrumb")).toContainText(familyName);
+    // 以“打开菜单→点链接”整体重试，容忍页面仍在加载
+    if (!(await page.locator(".breadcrumb").textContent())?.includes(familyName)) {
       await page.getByRole("button", { name: "更多" }).click();
+      await page.getByLabel("手机切换家庭").selectOption({ label: familyName });
+      await expect(page.getByRole("dialog")).toBeHidden(); // 切换家庭会关闭菜单
+      await expect(page.locator(".breadcrumb")).toContainText(familyName);
     }
-    await page.getByRole("dialog").getByRole("link", { name: linkName }).click();
+    await expect(async () => {
+      if (!(await page.getByRole("dialog").isVisible())) {
+        await page.getByRole("button", { name: "更多" }).click();
+      }
+      await page.getByRole("dialog").getByRole("link", { name: linkName }).click({ timeout: 3000 });
+    }).toPass({ timeout: 20000 });
   } else {
     await page.getByLabel("切换家庭").selectOption({ label: familyName });
     await page.getByRole("link", { name: linkName }).click();

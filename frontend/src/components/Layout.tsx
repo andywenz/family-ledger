@@ -172,11 +172,11 @@ export function FamilyLayout() {
   }, [fid]);
   const segment = location.pathname.split("/")[3] ?? "";
   if (error) return <PlainShell title="家庭"><ErrorNotice error={error} onRetry={reload} /></PlainShell>;
-  if (!data) return <Shell breadcrumb="加载中" fid={fid}><p className="muted">加载中…</p></Shell>;
+  // 加载中与加载后保持同一层级结构，避免 Shell 重新挂载（否则手机端“更多”菜单会在加载完成时消失）
   return (
-    <FamilyCtx.Provider value={{ fid, ...data, reload }}>
-      <Shell breadcrumb={TITLES[segment] ?? ""} familyName={data.family.name} fid={fid}>
-        <Outlet />
+    <FamilyCtx.Provider value={data ? { fid, ...data, reload } : null}>
+      <Shell breadcrumb={data ? (TITLES[segment] ?? "") : "加载中"} familyName={data?.family.name} fid={fid}>
+        {data ? <Outlet /> : <p className="muted">加载中…</p>}
       </Shell>
     </FamilyCtx.Provider>
   );
