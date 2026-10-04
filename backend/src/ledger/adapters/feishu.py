@@ -54,7 +54,10 @@ def verify_request(
     try:
         skew = abs((now or time.time()) - int(ts))
     except ValueError:
-        raise FeishuAuthError("时间戳无效") from None
+        # 诊断：只记录格式（非密钥），用于核实卡片回调的时间戳与签名格式
+        raise FeishuAuthError(
+            f"时间戳无效：ts={ts[:40]!r} nonce_len={len(nonce)} sig_len={len(sig)}"
+        ) from None
     if skew > MAX_SKEW_S:
         raise FeishuAuthError("请求已过期")
     if not hmac.compare_digest(sig, signature(ts, nonce, secrets.encrypt_key, raw_body)):
