@@ -108,7 +108,8 @@ def open_envelope(
     if header.get("app_id") != secrets.app_id:
         raise FeishuAuthError("应用不匹配")
     if header.get("tenant_key") != secrets.tenant_key:
-        raise FeishuAuthError("租户不在允许范围")
+        # 记录收到的租户标识（非密钥），便于首次配置白名单
+        raise FeishuAuthError(f"租户不在允许范围：{header.get('tenant_key')}")
     return body
 
 

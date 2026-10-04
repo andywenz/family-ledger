@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+
 from ledger.adapters.feishu import FeishuAuthError
 from ledger.application import feishu
 from ledger.domain.errors import DomainError
 
 from .app import Request, Response, handles
+
+log = logging.getLogger(__name__)
 
 
 @handles("createFeishuBindingCode")
@@ -50,7 +54,8 @@ def events(req: Request) -> Response:
         raise DomainError("飞书尚未配置", code="integration_not_configured")
     try:
         out = feishu.handle_event(req.ctx, secrets, req.headers, req.raw_body)
-    except FeishuAuthError:
+    except FeishuAuthError as e:
+        log.warning("飞书事件被拒：%s", e)
         return Response(401)  # 不调用模型、不读取资源，只记录安全错误类别（FS-02）
     return Response(200, out)
 
@@ -62,6 +67,7 @@ def cards(req: Request) -> Response:
         raise DomainError("飞书尚未配置", code="integration_not_configured")
     try:
         out = feishu.handle_card(req.ctx, secrets, req.headers, req.raw_body)
-    except FeishuAuthError:
+    except FeishuAuthError as e:
+        log.warning("飞书卡片回调被拒：%s", e)
         return Response(401)
     return Response(200, out)
