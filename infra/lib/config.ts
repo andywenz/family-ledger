@@ -1,5 +1,14 @@
 // 部署参数：来自 CDK context（-c 或 config/private/cdk.context.json），公开仓库只含占位默认值。
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { App } from "aws-cdk-lib";
+
+// 私人部署参数文件（已被 .gitignore 排除）；-c 命令行参数优先
+const PRIVATE_CONTEXT = join(__dirname, "..", "..", "config", "private", "cdk.context.json");
+
+function privateContext(): Record<string, string> {
+  return existsSync(PRIVATE_CONTEXT) ? JSON.parse(readFileSync(PRIVATE_CONTEXT, "utf-8")) : {};
+}
 
 export interface LedgerConfig {
   envName: string; // prod | staging
@@ -16,7 +25,8 @@ export interface LedgerConfig {
 }
 
 export function loadConfig(app: App): LedgerConfig {
-  const c = (k: string) => app.node.tryGetContext(k) as string | undefined;
+  const file = privateContext();
+  const c = (k: string) => (app.node.tryGetContext(k) as string | undefined) ?? file[k];
   return {
     envName: c("envName") ?? "prod",
     account: c("account"),
