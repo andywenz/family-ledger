@@ -54,4 +54,10 @@ def relay_handler(_event: dict[str, Any], _context: Any) -> dict[str, int]:  # p
     n = recognition.relay_once(
         rt.ctx, lambda ref: sqs.send_message(QueueUrl=queue, MessageBody=json.dumps(ref))
     )
-    return {"dispatched": n}
+    # 由 Streams 触发时立即投递到期的飞书消息／卡片（原先只靠 5 分钟兜底，回复最慢 5 分钟）。
+    # 重试沿用同一 uuid，飞书 1 小时内去重，与定时兜底并发也不会重复发送（ADR-0013 第 8 条）。
+    from ledger.application import feishu
+
+    api = rt.services["feishu_api"]
+    delivered = feishu.deliver_due(rt.ctx, api) if api is not None else 0
+    return {"dispatched": n, "feishu_delivered": delivered}
