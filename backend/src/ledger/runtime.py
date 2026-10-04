@@ -74,8 +74,8 @@ def build(settings: Settings | None = None) -> Runtime:
             s.cognito_client_id,
         )
         jwks = PyJWKClient(f"{s.cognito_issuer}/.well-known/jwks.json", cache_keys=True)
-        sm = boto3.client("secretsmanager", region_name=s.region)
-        secret = sm.get_secret_value(SecretId=s.session_secret_arn)["SecretString"].encode()
+        ssm = boto3.client("ssm", region_name=s.region)
+        secret = secure_parameter(ssm, s.session_secret_param).encode()
         deps = AuthDeps(idp, JwtVerifier(s.cognito_issuer, s.cognito_client_id, jwks), secret)
         from ledger.adapters.blobs import S3BlobStore
 
@@ -83,9 +83,12 @@ def build(settings: Settings | None = None) -> Runtime:
             return boto3.client("s3", region_name=s.region)
 
         def feishu_secrets() -> Any:
-            return _feishu_secrets(
-                sm.get_secret_value(SecretId=os.environ["LEDGER_FEISHU_SECRET_ARN"])["SecretString"]
-            )
+            try:
+                raw = secure_parameter(ssm, os.environ["LEDGER_FEISHU_SECRET_PARAM"])
+            except (ssm.exceptions.ParameterNotFound, InsecureParameter) as e:
+                log.warning("飞书参数不可用：%s；飞书功能停用", type(e).__name__)
+                return None
+            return _feishu_secrets(raw)
 
         def feishu_api(svc: LazyServices) -> Any:
             from ledger.adapters.feishu import FeishuClient
@@ -107,6 +110,18 @@ def build(settings: Settings | None = None) -> Runtime:
         services["model"] = build_model(s)
     _register_routes()
     return Runtime(settings=s, ctx=ctx, auth=deps, services=services)
+
+
+class InsecureParameter(RuntimeError):
+    """参数不是 SecureString（例如误存为明文）：拒绝使用。"""
+
+
+def secure_parameter(ssm: Any, name: str) -> str:
+    """读取 SSM 加密参数，只接受 SecureString（2026-10-05 由 Secrets Manager 迁移）。"""
+    p = ssm.get_parameter(Name=name, WithDecryption=True)["Parameter"]
+    if p.get("Type") != "SecureString":
+        raise InsecureParameter(f"{name} 不是加密参数（{p.get('Type')}）")
+    return str(p["Value"])
 
 
 class LazyServices(dict[str, Any]):

@@ -20,7 +20,6 @@ import { Architecture, Code, Function as Fn, Runtime, StartingPosition } from "a
 import { DynamoEventSource, SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from "aws-cdk-lib/aws-s3";
-import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Topic } from "aws-cdk-lib/aws-sns";
 import { EmailSubscription } from "aws-cdk-lib/aws-sns-subscriptions";
 import { Queue } from "aws-cdk-lib/aws-sqs";
@@ -103,8 +102,15 @@ export class CoreStack extends Stack {
     });
 
     // ── 秘密（值由人工在控制台写入，不进入代码或 CI 输出） ──
-    const sessionSecret = new Secret(this, "SessionSecret", { generateSecretString: { passwordLength: 48, excludePunctuation: true } });
-    const feishuSecret = new Secret(this, "FeishuSecret", { description: "{app_id, app_secret, verification_token, encrypt_key, tenant_key}" });
+    // 秘密存于 SSM Parameter Store 的 SecureString（标准层免费；AWS 托管密钥 aws/ssm 加密）。
+    // CloudFormation 不能创建 SecureString，由运维命令写入（docs/部署.md）；代码只接受 SecureString。
+    const paramPrefix = `/family-ledger/${cfg.envName}`;
+    const sessionParam = `${paramPrefix}/session-secret`;
+    const feishuParam = `${paramPrefix}/feishu`;
+    const readParams = new PolicyStatement({
+      actions: ["ssm:GetParameter"],
+      resources: [sessionParam, feishuParam].map((n) => `arn:aws:ssm:${this.region}:${this.account}:parameter${n}`),
+    });
 
     // ── 队列 ──
     const dlq = new Queue(this, "RecognitionDlq", { retentionPeriod: Duration.days(14), enforceSSL: true });
@@ -124,8 +130,8 @@ export class CoreStack extends Stack {
       COGNITO_USER_POOL_ID: pool.userPoolId,
       COGNITO_CLIENT_ID: client.userPoolClientId,
       COGNITO_ISSUER: `https://cognito-idp.${this.region}.amazonaws.com/${pool.userPoolId}`,
-      LEDGER_SESSION_SECRET_ARN: sessionSecret.secretArn,
-      LEDGER_FEISHU_SECRET_ARN: feishuSecret.secretArn,
+      LEDGER_SESSION_SECRET_PARAM: sessionParam,
+      LEDGER_FEISHU_SECRET_PARAM: feishuParam,
       LEDGER_BLOB_BUCKET: photos.bucketName,
       LEDGER_EXPORT_BUCKET: exportsBucket.bucketName,
       LEDGER_ALLOWED_ORIGINS: siteOrigin,
@@ -160,8 +166,7 @@ export class CoreStack extends Stack {
 
     for (const f of [api, authAdmin, feishuFn, worker, relay, maintenance]) {
       table.grantReadWriteData(f);
-      sessionSecret.grantRead(f);
-      feishuSecret.grantRead(f); // runtime 构建时读取；仅飞书回调、Worker 与交付实际使用
+      f.addToRolePolicy(readParams); // 只能读这两个参数（会话密钥、飞书参数）
     }
     journal.grantReadWriteData(maintenance);
     journal.grantReadWriteData(api); // 清理在维护任务；保留写权限供删除事务跨表写入

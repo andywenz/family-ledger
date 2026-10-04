@@ -18,7 +18,7 @@ class Settings:
     cognito_user_pool_id: str = ""
     cognito_client_id: str = ""
     cognito_issuer: str = ""
-    session_secret_arn: str = ""
+    session_secret_param: str = ""
     blob_bucket: str = ""
     export_bucket: str = ""
     version: str = "dev"
@@ -46,7 +46,7 @@ def load() -> Settings:
         cognito_user_pool_id=os.environ.get("COGNITO_USER_POOL_ID", ""),
         cognito_client_id=os.environ.get("COGNITO_CLIENT_ID", ""),
         cognito_issuer=os.environ.get("COGNITO_ISSUER", ""),
-        session_secret_arn=os.environ.get("LEDGER_SESSION_SECRET_ARN", ""),
+        session_secret_param=os.environ.get("LEDGER_SESSION_SECRET_PARAM", ""),
         blob_bucket=os.environ.get("LEDGER_BLOB_BUCKET", ""),
         export_bucket=os.environ.get("LEDGER_EXPORT_BUCKET", ""),
         version=os.environ.get("LEDGER_VERSION", "dev"),
@@ -60,7 +60,7 @@ def load() -> Settings:
                 "COGNITO_USER_POOL_ID": s.cognito_user_pool_id,
                 "COGNITO_CLIENT_ID": s.cognito_client_id,
                 "COGNITO_ISSUER": s.cognito_issuer,
-                "LEDGER_SESSION_SECRET_ARN": s.session_secret_arn,
+                "LEDGER_SESSION_SECRET_PARAM": s.session_secret_param,
                 "LEDGER_BLOB_BUCKET": s.blob_bucket,
                 "LEDGER_EXPORT_BUCKET": s.export_bucket,
                 "LEDGER_ALLOWED_ORIGINS": ",".join(s.allowed_origins),

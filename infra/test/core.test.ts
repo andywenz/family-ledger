@@ -134,3 +134,11 @@ test("网站预热只在白天且每次只占用 0.3 秒", () => {
     }
   }
 });
+
+test("秘密：不再使用 Secrets Manager；函数只能读两个 SSM 参数", () => {
+  t.resourceCountIs("AWS::SecretsManager::Secret", 0);
+  const policies = JSON.stringify(t.findResources("AWS::IAM::Policy"));
+  if (!policies.includes("parameter/family-ledger/prod/session-secret")) throw new Error("缺少会话密钥参数读取权限");
+  if (!policies.includes("parameter/family-ledger/prod/feishu")) throw new Error("缺少飞书参数读取权限");
+  if (policies.includes("ssm:PutParameter") || policies.includes("parameter/*")) throw new Error("SSM 权限过宽");
+});
