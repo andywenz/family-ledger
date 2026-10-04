@@ -185,19 +185,22 @@ export class CoreStack extends Stack {
 
     worker.addEventSource(new SqsEventSource(queue, { batchSize: 1, reportBatchItemFailures: true }));
     relay.addEventSource(new DynamoEventSource(table, { startingPosition: StartingPosition.LATEST, batchSize: 50, retryAttempts: 3 }));
-    // 每 5 分钟预热：Api 同时 4 个实例（覆盖首屏并发），AuthAdmin 2 个（登录与刷新）
+    // 白天每 5 分钟预热：Api 同时 4 个实例（覆盖首屏并发），AuthAdmin 2 个（登录与刷新），飞书回调 1 个。
+    // 只在 UTC 18:00–10:59（新西兰夏令时 07:00–23:59，冬令时 06:00–22:59）；夜间不预热，偶发冷启动约 2 秒。
+    // hold 0.3 秒足以让同一轮的预热落在不同实例（2026-10-05 按费用调整，原为全天＋0.8 秒）。
+    const warmSchedule = () => Schedule.expression("cron(0/5 18-23,0-10 * * ? *)");
     const warm = (hold: number) => RuleTargetInput.fromObject({ warmup: true, hold_ms: hold });
     // 每条规则最多 5 个目标：Api 与 AuthAdmin 分开
     new Rule(this, "ApiWarmup", {
-      schedule: Schedule.rate(Duration.minutes(5)),
-      targets: [1, 2, 3, 4].map(() => new LambdaFunction(api, { event: warm(800) })),
+      schedule: warmSchedule(),
+      targets: [1, 2, 3, 4].map(() => new LambdaFunction(api, { event: warm(300) })),
     });
     new Rule(this, "AuthWarmup", {
-      schedule: Schedule.rate(Duration.minutes(5)),
-      targets: [1, 2].map(() => new LambdaFunction(authAdmin, { event: warm(800) })),
+      schedule: warmSchedule(),
+      targets: [1, 2].map(() => new LambdaFunction(authAdmin, { event: warm(300) })),
     });
     new Rule(this, "FeishuWarmup", {
-      schedule: Schedule.rate(Duration.minutes(5)),
+      schedule: warmSchedule(),
       targets: [new LambdaFunction(feishuFn, { event: RuleTargetInput.fromObject({ warmup: true }) })],
     });
     new Rule(this, "OutboxSweep", { schedule: Schedule.rate(Duration.minutes(5)), targets: [new LambdaFunction(relay)] });

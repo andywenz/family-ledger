@@ -101,12 +101,12 @@ test("首发初始化所需输出存在；Worker 只能调用选定模型（ADR-
   if (policies.includes("nova-lite")) throw new Error("仍引用 Lite");
 });
 
-test("飞书回调：1769 MB 且每 5 分钟预热（卡片 3 秒限制，FS-06）", () => {
+test("飞书回调：1769 MB 且白天每 5 分钟预热（卡片 3 秒限制，FS-06）", () => {
   const fns = t.findResources("AWS::Lambda::Function");
   const feishu = Object.entries(fns).find(([id]) => id.startsWith("FeishuCallback"));
   if (!feishu || (feishu[1] as any).Properties.MemorySize !== 1769) throw new Error("FeishuCallback 内存不是 1769");
   t.hasResourceProperties("AWS::Events::Rule", {
-    ScheduleExpression: "rate(5 minutes)",
+    ScheduleExpression: "cron(0/5 18-23,0-10 * * ? *)",
     Targets: Match.arrayWith([Match.objectLike({ Input: JSON.stringify({ warmup: true }) })]),
   });
 });
@@ -120,4 +120,17 @@ test("网站函数：1769 MB，且每 5 分钟同时预热多个实例", () => {
   const rules = Object.values(t.findResources("AWS::Events::Rule")) as any[];
   const counts = rules.map((r) => (r.Properties.Targets ?? []).length);
   if (!counts.includes(4) || !counts.includes(2)) throw new Error("缺少 Api×4／AuthAdmin×2 预热规则");
+});
+
+test("网站预热只在白天且每次只占用 0.3 秒", () => {
+  const rules = Object.values(t.findResources("AWS::Events::Rule")) as any[];
+  const warmups = rules.filter((r) => JSON.stringify(r.Properties.Targets ?? []).includes("warmup"));
+  if (warmups.length !== 3) throw new Error(`预热规则应为 3 条，实际 ${warmups.length}`);
+  for (const r of warmups) {
+    if (r.Properties.ScheduleExpression !== "cron(0/5 18-23,0-10 * * ? *)") throw new Error("预热应只在白天");
+    for (const tgt of r.Properties.Targets) {
+      const hold = JSON.parse(tgt.Input).hold_ms;
+      if (hold !== undefined && hold > 300) throw new Error("预热 hold 应不超过 300 毫秒");
+    }
+  }
 });
