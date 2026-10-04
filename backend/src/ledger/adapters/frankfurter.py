@@ -55,7 +55,10 @@ def parse(payload: bytes, start: date, end: date, fetched_at: datetime) -> list[
         if not isinstance(r, dict) or r.get("base") != "EUR":
             raise ProviderError("响应基准币种不是 EUR")
         d = date.fromisoformat(str(r["date"]))
-        if not start <= d <= end:
+        if d < start:
+            # 起始日为非工作日时，供应商会附带此前最近一个工作日的汇率（2026-10-04 生产初始化实测）
+            continue
+        if d > end:
             raise ProviderError("响应日期超出请求范围")
         rate = r["rate"]
         if not isinstance(rate, Decimal):

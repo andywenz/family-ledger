@@ -87,3 +87,13 @@ def test_malformed_responses_rejected(payload: bytes) -> None:
 def test_day_without_usd_is_skipped_not_spliced() -> None:
     payload = b'[{"date":"2026-10-02","base":"EUR","quote":"NZD","rate":2.0}]'
     assert parse(payload, date(2026, 10, 2), date(2026, 10, 2), T) == []
+
+
+def test_rows_before_start_are_dropped() -> None:
+    """起始日为周六时 Frankfurter 会返回前一个周五的汇率：丢弃，不当作错误。"""
+    payload = (
+        b'[{"date":"2026-06-05","base":"EUR","quote":"USD","rate":1.1},'
+        b'{"date":"2026-06-08","base":"EUR","quote":"USD","rate":1.2}]'
+    )
+    sets = parse(payload, date(2026, 6, 6), date(2026, 6, 8), T)
+    assert [s.effective_date for s in sets] == [date(2026, 6, 8)]
