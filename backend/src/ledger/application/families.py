@@ -13,7 +13,7 @@ from ledger.domain.categories import load_template
 from ledger.domain.entries import PAYMENT_METHODS
 from ledger.domain.errors import DomainError, Forbidden, NotFound, StaleRead, ValidationFailed
 
-from . import actions
+from . import actions, secondary
 from .actions import Built, Scope
 from .context import AppContext
 from .guard import guard_actor, guard_member, load_membership, load_profile, member_fail
@@ -251,6 +251,7 @@ def config_view(cfg: dict[str, Any]) -> dict[str, Any]:
         "timezone": cfg["timezone"],
         "category_manifest_version": int(cfg["category_manifest_version"]),
         "version": int(cfg["version"]),
+        "secondary_currency": secondary.configured(cfg),
     }
 
 
@@ -271,7 +272,13 @@ def update_config(
     default_currency: str | None = None,
     default_payment_method: str | None = None,
     timezone: str | None = None,
+    **extra: Any,
 ) -> dict[str, Any]:
+    # secondary_currency：键存在才修改；值为 None 表示“不显示辅助币种”
+    set_secondary = "secondary_currency" in extra
+    secondary_currency: str | None = extra.pop("secondary_currency", None)
+    if extra:
+        raise ValidationFailed("未知的设置项")
     if timezone is not None:
         _check_tz(timezone)
     if default_payment_method is not None and default_payment_method not in PAYMENT_METHODS:
@@ -280,6 +287,7 @@ def update_config(
         "c": default_currency,
         "p": default_payment_method,
         "t": timezone,
+        "s": [set_secondary, secondary_currency],
         "v": expected_version,
     }
 
@@ -294,7 +302,14 @@ def update_config(
             and ctx.store.get(keys.family(fid), keys.family_currency(default_currency)) is None
         ):
             raise ValidationFailed("默认币种必须是本家庭已启用币种")
+        if set_secondary and secondary_currency is not None:
+            if secondary_currency == "NZD":
+                raise ValidationFailed("辅助币种不能是主币种 NZD")
+            if ctx.store.get(keys.family(fid), keys.family_currency(secondary_currency)) is None:
+                raise ValidationFailed("辅助币种必须是本家庭已启用币种")
         new = {**cfg, "version": expected_version + 1}
+        if set_secondary:
+            new["secondary_currency"] = secondary_currency or ""  # 空字符串＝不显示
         for k, v in (
             ("default_currency", default_currency),
             ("default_payment_method", default_payment_method),

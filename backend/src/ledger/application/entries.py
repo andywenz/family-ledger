@@ -29,7 +29,7 @@ from ledger.domain.entries import (
 from ledger.domain.errors import DomainError, NotFound, StaleRead, ValidationFailed
 from ledger.domain.money import CurrencyMeta
 
-from . import actions, attachments, repo
+from . import actions, attachments, repo, secondary
 from .actions import Built, Scope
 from .context import AppContext
 from .guard import guard_member, load_membership
@@ -215,6 +215,13 @@ def dashboard(
     f = _parse_filters(filters)
     rows, version = _consistent_month(ctx, fid, month)
     out = dash.compute(rows, env.catalog, f)
+    target = secondary.configured(repo.family_config(ctx, fid))
+    sec = None
+    if target:
+        matched = [e for e in rows if dash.matches(e, f, env.catalog)]
+        sec = secondary.dashboard_block(
+            secondary.SecondaryConverter(ctx, fid, target, matched), matched
+        )
     return {
         "family_id": fid,
         "month": month,
@@ -222,6 +229,7 @@ def dashboard(
         "data_version": version,
         "computed_at": keys.ts(env.now),
         **out,
+        "secondary": sec,
     }
 
 
@@ -264,7 +272,10 @@ def list_entries(
         offset = int(c.get("o", 0))
     matched = [e for e in rows if dash.matches(e, f, env.catalog)]
     page = matched[offset : offset + page_size]
-    out: dict[str, Any] = {"items": [env.view(e) for e in page], "data_version": version}
+    target = secondary.configured(repo.family_config(ctx, fid))
+    conv = secondary.SecondaryConverter(ctx, fid, target, page) if target else None
+    items = [env.view(e) | {"secondary": conv.amount(e) if conv else None} for e in page]
+    out: dict[str, Any] = {"items": items, "data_version": version}
     if offset + page_size < len(matched):
         out["next_cursor"] = _encode_cursor({"s": sig, "v": version, "o": offset + page_size})
     return out

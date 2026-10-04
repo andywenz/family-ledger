@@ -15,6 +15,7 @@ export default function FamilySettings() {
   const [role, setRole] = useState("member");
   const [cur, setCur] = useState(fam.config.default_currency);
   const [method, setMethod] = useState(fam.config.default_payment_method);
+  const [secondary, setSecondary] = useState(fam.config.secondary_currency ?? "");
   const invites = useLoad(() => (isAdmin ? api.get<{ items: Schemas["Invitation"][] }>(`/families/${fam.fid}/invitations`) : Promise.resolve({ items: [] })), [fam.fid, isAdmin]);
 
   async function call(fn: (key: string) => Promise<unknown>, msg: string) {
@@ -77,9 +78,16 @@ export default function FamilySettings() {
           <div className="field-grid">
             <label className="field">默认币种<select value={cur} disabled={!isAdmin} onChange={(e) => setCur(e.target.value)}>{fam.currencies.map((c) => <option key={c.code}>{c.code}</option>)}</select></label>
             <label className="field">默认消费方式<select value={method} disabled={!isAdmin} onChange={(e) => setMethod(e.target.value as typeof method)}>{METHODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+            <label className="field">辅助币种（可选）
+              <select value={secondary} disabled={!isAdmin} onChange={(e) => setSecondary(e.target.value)}>
+                <option value="">不显示</option>
+                {fam.currencies.filter((c) => c.code !== "NZD").map((c) => <option key={c.code} value={c.code}>{c.name_zh}（{c.code}）</option>)}
+              </select>
+            </label>
           </div>
+          <p className="tiny-note">辅助币种决定月度总览里“合 xxx”的显示：净支出、消费方式和明细列表。选“不显示”则只显示纽币；不影响已入账的金额。</p>
           <p className="tiny-note">家庭时区 · {fam.config.timezone}<br />原始照片随有效账目长期保存。</p>
-          {isAdmin && <button className="button primary" onClick={() => void call((key) => api.patch(`/families/${fam.fid}/config`, { default_currency: cur, default_payment_method: method, expected_version: fam.config.version }, { key }), "设置已保存")}>保存设置</button>}
+          {isAdmin && <button className="button primary" onClick={() => void call((key) => api.patch(`/families/${fam.fid}/config`, { default_currency: cur, default_payment_method: method, secondary_currency: secondary || null, expected_version: fam.config.version }, { key }), "设置已保存")}>保存设置</button>}
         </section>
       </div>
       {toast.node}

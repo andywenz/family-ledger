@@ -154,3 +154,12 @@ test("AI 费用带项目标签：识别经应用推理配置文件调用", () =>
     Environment: { Variables: Match.objectLike({ LEDGER_MODEL: "amazon.nova-pro-v1:0", LEDGER_MODEL_INVOKE_ID: Match.anyValue() }) },
   });
 });
+
+test("CloudFront：前端路由由函数改写为 index.html；不再用错误页规则（避免吞掉 API 404）", () => {
+  const d = Object.values(t.findResources("AWS::CloudFront::Distribution"))[0] as any;
+  if (d.Properties.DistributionConfig.CustomErrorResponses) throw new Error("仍有错误页规则");
+  const assoc = d.Properties.DistributionConfig.DefaultCacheBehavior.FunctionAssociations;
+  if (!assoc || assoc[0].EventType !== "viewer-request") throw new Error("默认行为缺少 viewer-request 函数");
+  const fns = Object.values(t.findResources("AWS::CloudFront::Function")) as any[];
+  if (!fns.some((f) => String(f.Properties.FunctionCode).includes("/index.html"))) throw new Error("缺少 SPA 改写函数");
+});

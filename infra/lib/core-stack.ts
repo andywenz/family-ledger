@@ -6,7 +6,7 @@ import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations
 import { CfnBudget } from "aws-cdk-lib/aws-budgets";
 import type { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import {
-  AllowedMethods, CachePolicy, Distribution, OriginRequestPolicy, ResponseHeadersPolicy, ViewerProtocolPolicy,
+  AllowedMethods, CachePolicy, Distribution, Function as CfFunction, FunctionCode, FunctionEventType, OriginRequestPolicy, ResponseHeadersPolicy, ViewerProtocolPolicy,
 } from "aws-cdk-lib/aws-cloudfront";
 import { HttpOrigin, S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { Alarm, ComparisonOperator, type IMetric, TreatMissingData } from "aws-cdk-lib/aws-cloudwatch";
@@ -240,11 +240,22 @@ export class CoreStack extends Stack {
 
     // ── 网站分发 ──
     const apiDomain = `${http.apiId}.execute-api.${this.region}.amazonaws.com`;
+    // 单页应用路由：前端页面路径（无扩展名）改写为 /index.html，刷新任意页面都能打开。
+    // 取代原来的“404 → index.html”错误页规则：那条规则作用于整个分发，会把 API 的 404 也换成
+    // HTML 200；而 S3（OAC）对不存在的对象返回 403，前端页面刷新因此报 AccessDenied（2026-10-05）。
+    const spaRewrite = new CfFunction(this, "SpaRewrite", {
+      code: FunctionCode.fromInline(
+        "function handler(event){var r=event.request;var u=r.uri;" +
+        "if(u.lastIndexOf('.')<=u.lastIndexOf('/')){r.uri='/index.html';}return r;}",
+      ),
+      comment: "SPA routes to index.html",
+    });
     const dist = new Distribution(this, "Web", {
       defaultBehavior: {
         origin: S3BucketOrigin.withOriginAccessControl(site),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
+        functionAssociations: [{ function: spaRewrite, eventType: FunctionEventType.VIEWER_REQUEST }],
       },
       additionalBehaviors: {
         "/v1/*": {
@@ -256,7 +267,6 @@ export class CoreStack extends Stack {
         },
       },
       defaultRootObject: "index.html",
-      errorResponses: [{ httpStatus: 404, responseHttpStatus: 200, responsePagePath: "/index.html" }],
       domainNames: cfg.siteDomain && props.certificate ? [cfg.siteDomain] : undefined,
       certificate: props.certificate,
     });

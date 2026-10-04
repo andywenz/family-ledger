@@ -250,3 +250,26 @@ test("界面风格：三种可切换并在刷新后保持", async ({ page }, inf
   await expect(page.locator("html")).toHaveAttribute("data-theme", "pop"); // 刷新后保持上次选择
   await page.getByTitle("果汁色块").click();
 });
+
+test("辅助币种：不显示时隐藏“合 xxx”，选 AUD 后按澳元显示", async ({ page }, info) => {
+  const project = info.project.name;
+  await signInAdmin(page);
+  await openFamilyPage(page, `家-${project}`, "家庭与设置");
+  const pick = async (label: string) => {
+    await page.getByLabel("辅助币种（可选）").selectOption({ label });
+    await page.getByRole("button", { name: "保存设置" }).click();
+    await expect(page.getByText("设置已保存")).toBeVisible();
+  };
+  await pick("不显示");
+  await page.getByRole("link", { name: "月度总览" }).first().click();
+  await expect(page.getByText("本月明细")).toBeVisible();
+  await expect(page.getByText(/合 CNY/)).toHaveCount(0);
+  await expect(page.getByRole("columnheader", { name: /^合 (CNY|AUD)$/ })).toHaveCount(0);
+  await openFamilyPage(page, `家-${project}`, "家庭与设置");
+  await pick("澳大利亚元（AUD）");
+  await page.getByRole("link", { name: "月度总览" }).first().click();
+  await expect(page.getByText(/合 AUD/).first()).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "合 AUD" })).toBeVisible();
+  await openFamilyPage(page, `家-${project}`, "家庭与设置");
+  await pick("人民币（CNY）"); // 恢复默认，避免影响其他用例
+});

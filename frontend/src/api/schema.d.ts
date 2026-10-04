@@ -1313,6 +1313,8 @@ export interface components {
             timezone: string;
             category_manifest_version: number;
             version: components["schemas"]["Version"];
+            /** @description 月度总览的辅助显示币种；null 表示不显示（主币种固定为 NZD） */
+            secondary_currency: string | null;
         };
         Member: {
             user_id: components["schemas"]["Id"];
@@ -1446,6 +1448,11 @@ export interface components {
             display_amounts: components["schemas"]["DisplayAmounts"];
             /** @description false 表示“不计收支” */
             counts_in_stats: boolean;
+            /** @description 明细列表中按家庭辅助币种折算的金额；未设置辅助币种或缺汇率时为 null（仅列表接口返回） */
+            secondary?: null | {
+                currency: components["schemas"]["CurrencyCode"];
+                amount: components["schemas"]["Decimal"];
+            };
             refund_of?: components["schemas"]["Id"];
             refund_ids?: components["schemas"]["Id"][];
             refunded_amount?: components["schemas"]["Decimal"];
@@ -1501,6 +1508,18 @@ export interface components {
                 expense_count: number;
                 refund_count: number;
             }[];
+            /** @description 辅助币种合计（家庭未设置辅助币种时为 null）；missing_count 为缺汇率未计入的笔数 */
+            secondary?: null | {
+                currency: components["schemas"]["CurrencyCode"];
+                net_expense: components["schemas"]["Decimal"];
+                net_expense_minor: number;
+                missing_count: number;
+                by_payment_method: {
+                    payment_method: components["schemas"]["PaymentMethod"];
+                    net: components["schemas"]["Decimal"];
+                    net_minor: number;
+                }[];
+            };
             category_pie: {
                 /** @constant */
                 currency: "NZD";
@@ -2697,6 +2716,8 @@ export interface operations {
                     default_currency?: components["schemas"]["CurrencyCode"];
                     default_payment_method?: components["schemas"]["PaymentMethod"];
                     timezone?: string;
+                    /** @description 辅助显示币种；null 表示不显示；须为本家庭已启用且不是 NZD */
+                    secondary_currency?: string | null;
                     expected_version: components["schemas"]["Version"];
                 };
             };

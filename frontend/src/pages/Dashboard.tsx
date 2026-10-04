@@ -62,6 +62,8 @@ export default function Dashboard() {
   }
 
   const s = data?.summary;
+  // 辅助币种（家庭设置，可选）：未设置时不显示“合 xxx”
+  const sec = s?.secondary ?? null;
   const pie = s?.category_pie;
   let at = 0;
   const gradient = pie?.slices.map((sl, i) => {
@@ -95,7 +97,12 @@ export default function Dashboard() {
             <article className="card spending-hero">
               <div className="card-label">本月净支出 <Icon name="wallet" /></div>
               <div className="number"><small>$</small>{money(s.totals.net_expense.nzd)}</div>
-              <div className="secondary-amount">合 CNY ¥ {money(s.totals.net_expense.cny)}</div>
+              {sec && (
+                <div className="secondary-amount">
+                  合 {sec.currency} {money(sec.net_expense)}
+                  {sec.missing_count > 0 && <small>（{sec.missing_count} 笔缺少汇率，未计入）</small>}
+                </div>
+              )}
               <div className="card-footnote"><span className="dot"></span>消费 ${money(s.totals.expense_gross.nzd)} · 退款 ${money(s.totals.refund.nzd)}</div>
             </article>
             <article className="card">
@@ -128,7 +135,7 @@ export default function Dashboard() {
                 <div key={m.payment_method} className="payment-row">
                   <div className="payment-icon"><Icon name={m.payment_method === "cash" ? "cash" : m.payment_method === "credit_card" ? "card" : "wallet"} /></div>
                   <div className="payment-label">{METHOD_LABEL[m.payment_method]}<small>{m.expense_count} 笔消费 · {m.refund_count} 笔退款</small></div>
-                  <div className="payment-amount"><strong>NZD ${money(m.net.nzd)}</strong><small>CNY ¥{money(m.net.cny)}</small></div>
+                  <div className="payment-amount"><strong>NZD ${money(m.net.nzd)}</strong>{sec && <small>{sec.currency} {money(sec.by_payment_method.find((x) => x.payment_method === m.payment_method)?.net ?? "0")}</small>}</div>
                 </div>
               ))}
             </article>
@@ -176,7 +183,7 @@ export default function Dashboard() {
                 <thead>
                   <tr>
                     <th>日期</th><th>类型</th><th>一级分类</th><th>二级分类</th><th>币种</th>
-                    <th className="numeric">原始金额</th><th className="numeric">合 NZD</th><th className="numeric">合 CNY</th>
+                    <th className="numeric">原始金额</th><th className="numeric">合 NZD</th>{sec && <th className="numeric">合 {sec.currency}</th>}
                     <th>备注</th><th>方式</th><th>录入人</th><th>操作</th>
                   </tr>
                 </thead>
@@ -190,7 +197,7 @@ export default function Dashboard() {
                       <td>{e.currency}</td>
                       <td className="numeric">{money(e.amount)}</td>
                       <td className="numeric">{money(e.display_amounts.nzd)}</td>
-                      <td className="numeric">{money(e.display_amounts.cny)}</td>
+                      {sec && <td className="numeric">{e.secondary ? money(e.secondary.amount) : "—"}</td>}
                       <td className="note-cell">{e.note}{e.attachments.length > 0 && <span title="有照片"> 📎</span>}</td>
                       <td>{e.payment_method ? METHOD_LABEL[e.payment_method] : "—"}</td>
                       <td>{e.created_by_display}{e.created_by_left && <small>（已离开）</small>}{e.source === "import" && <small>（历史导入）</small>}</td>
