@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ledger.adapters.feishu import FeishuAuthError
 from ledger.application import feishu
+from ledger.domain.errors import DomainError
 
 from .app import Request, Response, handles
 
@@ -44,10 +45,11 @@ def delete_binding(req: Request) -> Response:
 
 @handles("feishuEvents")
 def events(req: Request) -> Response:
+    secrets = req.runtime.services["feishu_secrets"]
+    if secrets is None:  # 飞书尚未配置：不处理、不调用模型
+        raise DomainError("飞书尚未配置", code="integration_not_configured")
     try:
-        out = feishu.handle_event(
-            req.ctx, req.runtime.services["feishu_secrets"], req.headers, req.raw_body
-        )
+        out = feishu.handle_event(req.ctx, secrets, req.headers, req.raw_body)
     except FeishuAuthError:
         return Response(401)  # 不调用模型、不读取资源，只记录安全错误类别（FS-02）
     return Response(200, out)
@@ -55,10 +57,11 @@ def events(req: Request) -> Response:
 
 @handles("feishuCardActions")
 def cards(req: Request) -> Response:
+    secrets = req.runtime.services["feishu_secrets"]
+    if secrets is None:  # 飞书尚未配置：不处理、不调用模型
+        raise DomainError("飞书尚未配置", code="integration_not_configured")
     try:
-        out = feishu.handle_card(
-            req.ctx, req.runtime.services["feishu_secrets"], req.headers, req.raw_body
-        )
+        out = feishu.handle_card(req.ctx, secrets, req.headers, req.raw_body)
     except FeishuAuthError:
         return Response(401)
     return Response(200, out)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 from pathlib import Path
@@ -13,6 +14,8 @@ from ledger.application.context import AppContext
 from ledger.http.app import Runtime
 from ledger.identity.jwt_verifier import JwtVerifier
 from ledger.settings import Settings, load
+
+log = logging.getLogger(__name__)
 
 
 def _register_routes() -> None:
@@ -80,25 +83,35 @@ def build(settings: Settings | None = None) -> Runtime:
         from ledger.adapters.blobs import S3BlobStore
 
         s3 = boto3.client("s3", region_name=s.region)
-        import json as _json
+        from ledger.adapters.feishu import FeishuClient
 
-        from ledger.adapters.feishu import FeishuClient, FeishuSecrets
-
-        fs = _json.loads(
+        feishu_secrets = _feishu_secrets(
             boto3.client("secretsmanager", region_name=s.region).get_secret_value(
                 SecretId=os.environ["LEDGER_FEISHU_SECRET_ARN"]
             )["SecretString"]
         )
-        feishu_secrets = FeishuSecrets(**fs)
         services = {
             "blobs": S3BlobStore(s3, s.blob_bucket),
             "exports": S3BlobStore(s3, s.export_bucket),
             "feishu_secrets": feishu_secrets,
-            "feishu_api": FeishuClient(feishu_secrets),
+            "feishu_api": FeishuClient(feishu_secrets) if feishu_secrets else None,
         }
     services["model"] = build_model(s)
     _register_routes()
     return Runtime(settings=s, ctx=ctx, auth=deps, services=services)
+
+
+def _feishu_secrets(raw: str) -> Any:
+    """解析飞书 Secret。未配置（初始随机值或字段不全）时返回 None：只停用飞书，网站照常运行。"""
+    import json as _json
+
+    from ledger.adapters.feishu import FeishuSecrets
+
+    try:
+        return FeishuSecrets(**_json.loads(raw))
+    except (ValueError, TypeError):
+        log.warning("飞书 Secret 未配置或格式不对：飞书功能停用")
+        return None
 
 
 def build_model(s: Settings) -> Any:

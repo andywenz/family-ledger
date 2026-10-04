@@ -1208,7 +1208,7 @@ export interface components {
         Error: {
             error: {
                 /** @enum {string} */
-                code: "unauthenticated" | "password_change_required" | "csrf_failed" | "forbidden" | "not_found" | "validation_failed" | "version_conflict" | "idempotency_key_reused" | "action_not_found" | "candidate_expired" | "candidate_stale" | "batch_too_large" | "rate_pending" | "refund_exceeds_remaining" | "refund_currency_mismatch" | "refund_target_invalid" | "has_linked_refunds" | "type_change_not_allowed" | "category_kind_mismatch" | "category_inactive" | "category_in_use" | "category_cycle" | "last_admin" | "login_name_taken" | "rename_pending" | "invitation_expired" | "purged" | "data_changing" | "data_changed" | "unsupported_media_type" | "upload_invalid" | "rate_limited" | "upstream_unknown" | "internal";
+                code: "unauthenticated" | "password_change_required" | "csrf_failed" | "forbidden" | "not_found" | "validation_failed" | "version_conflict" | "idempotency_key_reused" | "action_not_found" | "candidate_expired" | "candidate_stale" | "batch_too_large" | "rate_pending" | "refund_exceeds_remaining" | "refund_currency_mismatch" | "refund_target_invalid" | "has_linked_refunds" | "type_change_not_allowed" | "category_kind_mismatch" | "category_inactive" | "category_in_use" | "category_cycle" | "last_admin" | "login_name_taken" | "rename_pending" | "invitation_expired" | "purged" | "data_changing" | "data_changed" | "unsupported_media_type" | "upload_invalid" | "rate_limited" | "upstream_unknown" | "integration_not_configured" | "internal";
                 /** @description 中文用户可读信息，不含他人对象内容 */
                 message: string;
                 request_id: string;

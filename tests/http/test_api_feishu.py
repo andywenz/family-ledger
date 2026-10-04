@@ -70,3 +70,28 @@ def test_binding_code_requires_membership(family: dict[str, Any]) -> None:
         "/me/feishu-binding-code", {"default_family_id": "not-my-family"}
     )
     assert status == 403
+
+
+def test_unconfigured_feishu_returns_503_without_processing(runtime: Runtime) -> None:
+    """生产 Secret 尚未填写时：飞书入口返回 503，网站其余功能不受影响。"""
+    saved = runtime.services["feishu_secrets"]
+    runtime.services["feishu_secrets"] = None
+    try:
+        for path in ("/integrations/feishu/events", "/integrations/feishu/cards"):
+            assert (
+                raw_call(runtime, path, {"content-type": "application/json"}, b"{}")["status"]
+                == 503
+            )
+    finally:
+        runtime.services["feishu_secrets"] = saved
+
+
+def test_feishu_secret_parsing_tolerates_placeholder() -> None:
+    from ledger.runtime import _feishu_secrets
+
+    assert _feishu_secrets("Xk3randomGeneratedPlaceholder") is None  # CDK 初始随机值
+    assert _feishu_secrets('{"app_id": "cli_x"}') is None  # 字段不全
+    full = {
+        k: "v" for k in ("app_id", "app_secret", "verification_token", "encrypt_key", "tenant_key")
+    }
+    assert _feishu_secrets(json.dumps(full)).app_id == "v"

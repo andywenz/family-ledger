@@ -148,3 +148,8 @@ def test_expire_batches_clears_candidate_content(world: World, tmp_path: Path) -
     assert other["status"] == "expired"
     batch = w.ctx.store.get(keys.family(w.fid), f"BATCH#{b['batch_id']}")
     assert batch is not None and batch["status"] == "expired" and "GSI1PK" not in batch
+
+
+def test_maintenance_skips_feishu_delivery_when_unconfigured(world: World) -> None:
+    out = maintenance.run(world.ctx, blobs=None, feishu_api=None, tasks=("outbox",))
+    assert "feishu_delivered" not in out  # 消息保持待发送，配置后再投递

@@ -88,7 +88,7 @@ def run(
     now: datetime | None = None,
 ) -> dict[str, Any]:
     out: dict[str, Any] = {}
-    if "outbox" in tasks:
+    if "outbox" in tasks and feishu_api is not None:  # 飞书未配置时消息保持待发送
         out["feishu_delivered"] = feishu.deliver_due(ctx, feishu_api, now)
     if "trash" in tasks:
         out["entries_purged"] = entries.purge_due(ctx, now)

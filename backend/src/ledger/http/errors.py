@@ -40,6 +40,7 @@ STATUS: dict[str, int] = {
     "unsupported_media_type": 415,
     "rate_limited": 429,
     "upstream_unknown": 503,
+    "integration_not_configured": 503,
     "internal": 500,
 }
 

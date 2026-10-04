@@ -2344,6 +2344,7 @@ components:
                 - upload_invalid
                 - rate_limited
                 - upstream_unknown
+                - integration_not_configured
                 - internal
             message: { type: string, description: 中文用户可读信息，不含他人对象内容 }
             request_id: { type: string }
