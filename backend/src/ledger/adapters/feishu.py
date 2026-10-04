@@ -9,8 +9,10 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Protocol
 
 import httpx
@@ -43,6 +45,23 @@ def signature(timestamp: str, nonce: str, encrypt_key: str, raw_body: bytes) -> 
     return hashlib.sha256((timestamp + nonce + encrypt_key).encode() + raw_body).hexdigest()
 
 
+_GO_TIME = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?:\.(\d+))? ([+-]\d{4})(?: \S+)?$")
+
+
+def _parse_timestamp(ts: str) -> float | None:
+    """事件回调为 Unix 秒；卡片回调为 Go 时间字符串，如
+    '2026-10-04 18:23:46.052290112 +0800 CST '（2026-10-04 生产实测）。"""
+    ts = ts.strip()
+    if ts.isdigit():
+        return float(ts)
+    m = _GO_TIME.match(ts)
+    if not m:
+        return None
+    frac = (m.group(2) or "0")[:6].ljust(6, "0")
+    dt = datetime.strptime(f"{m.group(1)}.{frac} {m.group(3)}", "%Y-%m-%d %H:%M:%S.%f %z")
+    return dt.timestamp()
+
+
 def verify_request(
     headers: dict[str, str], raw_body: bytes, secrets: FeishuSecrets, now: float | None = None
 ) -> None:
@@ -51,16 +70,17 @@ def verify_request(
     sig = headers.get("x-lark-signature", "")
     if not ts or not nonce or not sig:
         raise FeishuAuthError("缺少签名头")
-    try:
-        skew = abs((now or time.time()) - int(ts))
-    except ValueError:
-        # 诊断：只记录格式（非密钥），用于核实卡片回调的时间戳与签名格式
-        raise FeishuAuthError(
-            f"时间戳无效：ts={ts[:40]!r} nonce_len={len(nonce)} sig_len={len(sig)}"
-        ) from None
-    if skew > MAX_SKEW_S:
+    sent_at = _parse_timestamp(ts)
+    if sent_at is None:
+        raise FeishuAuthError(f"时间戳无效：{ts[:40]!r}")
+    if abs((now or time.time()) - sent_at) > MAX_SKEW_S:
         raise FeishuAuthError("请求已过期")
-    if not hmac.compare_digest(sig, signature(ts, nonce, secrets.encrypt_key, raw_body)):
+    # 签名按原始头部字符串计算；网关可能去掉首尾空格，因此也接受去空格后的版本
+    candidates = {ts, ts.strip()}
+    if not any(
+        hmac.compare_digest(sig, signature(t, nonce, secrets.encrypt_key, raw_body))
+        for t in candidates
+    ):
         raise FeishuAuthError("签名不匹配")
 
 
