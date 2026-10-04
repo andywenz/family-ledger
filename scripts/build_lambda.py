@@ -33,6 +33,16 @@ PLATFORM = "aarch64-manylinux_2_28"
 FIXED_TIME = (2020, 1, 1, 0, 0, 0)
 
 
+def _packaged(rel: Path) -> bool:
+    """排除与构建路径相关、运行时不需要的文件，保证不同目录构建出相同摘要。
+
+    bin/ 下的命令行脚本 shebang 含构建机解释器绝对路径；RECORD 记录这些脚本的哈希。
+    """
+    if "__pycache__" in rel.parts or rel.parts[0] == "bin":
+        return False
+    return not (rel.name == "RECORD" and rel.parent.name.endswith(".dist-info"))
+
+
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -94,7 +104,7 @@ def build(with_deps: bool) -> Path:
         shutil.copy2(ROOT / rel, dst)
     DIST.mkdir(exist_ok=True)
     out = DIST / "lambda.zip"
-    files = sorted(p for p in BUILD.rglob("*") if p.is_file() and "__pycache__" not in p.parts)
+    files = sorted(p for p in BUILD.rglob("*") if p.is_file() and _packaged(p.relative_to(BUILD)))
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for f in files:
             info = zipfile.ZipInfo(f.relative_to(BUILD).as_posix(), FIXED_TIME)

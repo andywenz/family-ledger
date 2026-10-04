@@ -55,3 +55,14 @@ def test_local_substitutes_and_missing_resources_rejected(tmp_path: Path) -> Non
 def test_commit_mismatch_and_dirty_rejected(tmp_path: Path) -> None:
     errs = verify_artifact.verify(*make(tmp_path, GOOD, commit="other", dirty=True), "abc")
     assert any("预期" in e for e in errs) and any("未提交" in e for e in errs)
+
+
+def test_build_excludes_path_dependent_files() -> None:
+    """不同目录构建须得到相同摘要：命令行脚本（shebang 含绝对路径）与 RECORD 不打包。"""
+    from build_lambda import _packaged
+
+    assert not _packaged(Path("bin/httpx"))
+    assert not _packaged(Path("httpx-0.28.1.dist-info/RECORD"))
+    assert not _packaged(Path("ledger/__pycache__/x.pyc"))
+    assert _packaged(Path("httpx-0.28.1.dist-info/METADATA"))
+    assert _packaged(Path("ledger/runtime.py"))
