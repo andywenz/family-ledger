@@ -16,8 +16,6 @@ from starlette.routing import Route
 
 from ledger.adapters.blobs import UploadForm
 
-from .server import EXTRA_ROUTES
-
 _STORES: dict[str, LocalBlobStore] = {}
 
 
@@ -160,7 +158,10 @@ async def download(request: Request) -> Response:
     return Response(path.read_bytes(), headers=headers)
 
 
-EXTRA_ROUTES.extend(
+# 由 server.create_app 直接读取，不经 server 模块的全局列表：
+# 以 python -m 启动时 server 会被加载两份，登记到另一份里导致本地上传／下载 404（2026-10-05 发现）
+ROUTES: list[Route] = []
+ROUTES.extend(
     [
         Route("/local-blobs/upload", upload, methods=["POST"]),
         Route("/local-blobs/get", download, methods=["GET"]),

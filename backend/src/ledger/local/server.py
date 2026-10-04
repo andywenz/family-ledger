@@ -19,7 +19,6 @@ from ledger.http.app import Runtime, handle_event
 from ledger.runtime import build
 
 _runtime: Runtime | None = None
-EXTRA_ROUTES: list[Route] = []  # 本地 blob 等替身路由在此登记
 
 
 def runtime() -> Runtime:
@@ -87,7 +86,7 @@ def create_app() -> Starlette:
     from collections.abc import AsyncIterator
     from contextlib import asynccontextmanager
 
-    from ledger.local import blobs  # noqa: F401  # 登记本地 blob 路由
+    from ledger.local import blobs  # 本地 blob 上传／下载路由
 
     @asynccontextmanager
     async def lifespan(_app: Starlette) -> AsyncIterator[None]:
@@ -95,7 +94,7 @@ def create_app() -> Starlette:
         yield
 
     return Starlette(
-        routes=[*EXTRA_ROUTES, Route("/v1/{path:path}", api, methods=methods)],
+        routes=[*blobs.ROUTES, Route("/v1/{path:path}", api, methods=methods)],
         lifespan=lifespan,
     )
 

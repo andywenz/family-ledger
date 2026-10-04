@@ -73,3 +73,12 @@
 @media(max-width:1280px){.dashboard-top{grid-template-columns:1fr 1fr}.dashboard-top .spending-hero{grid-column:1/-1;min-height:0}}
 @media(max-width:950px){.dashboard-top{grid-template-columns:1fr}}
 @media(max-width:650px){.dashboard-top{gap:13px}}
+
+/* Dashboard 导出菜单 */
+.export-menu{position:relative}
+.export-menu>summary{list-style:none;cursor:pointer}
+.export-menu>summary::-webkit-details-marker{display:none}
+.export-options{position:absolute;right:0;top:calc(100% + 6px);z-index:30;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px #233b2a1f;padding:6px;min-width:190px;display:flex;flex-direction:column}
+.export-options button{border:0;background:none;text-align:left;padding:9px 11px;border-radius:7px;font-size:12px;color:#3f553b}
+.export-options button:hover{background:#f1f4ec}
+.export-options small{display:block;font-size:10px;color:#95a28c}

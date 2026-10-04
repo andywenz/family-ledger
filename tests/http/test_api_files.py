@@ -17,8 +17,8 @@ from starlette.testclient import TestClient
 
 from ledger.application import attachments, entries
 from ledger.http.app import Runtime
+from ledger.local.blobs import ROUTES as BLOB_ROUTES
 from ledger.local.blobs import LocalBlobStore
-from ledger.local.server import EXTRA_ROUTES
 
 from .conftest import Api, new_expense
 
@@ -33,7 +33,7 @@ def image_bytes(fmt: str = "JPEG", size: tuple[int, int] = (64, 48)) -> bytes:
 def blob_client() -> TestClient:
     import ledger.local.blobs  # noqa: F401  # 登记本地 blob 路由
 
-    return TestClient(Starlette(routes=list(EXTRA_ROUTES)))
+    return TestClient(Starlette(routes=list(BLOB_ROUTES)))
 
 
 def upload(

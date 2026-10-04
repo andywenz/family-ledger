@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { ApiError, api, type Dashboard as DashboardData, type Entry } from "../api/client";
 import { EntryDialog } from "../components/EntryDialog";
@@ -46,7 +46,10 @@ export default function Dashboard() {
     setParams(next);
   };
 
+  const exportMenu = useRef<HTMLDetailsElement>(null);
+
   async function exportFile(format: "csv" | "xlsx") {
+    exportMenu.current?.removeAttribute("open");
     try {
       const job = await api.post<{ download_url?: string }>(`/families/${fam.fid}/exports`, {
         format, month, filters: Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
@@ -156,8 +159,14 @@ export default function Dashboard() {
                   <option value="">所有方式</option>
                   {METHODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
-                <button className="icon-button" aria-label="导出 CSV" title="导出 CSV" onClick={() => void exportFile("csv")}><Icon name="download" /></button>
-                <button className="button secondary small" onClick={() => void exportFile("xlsx")}>Excel</button>
+                {/* 合并为一个“导出”按钮，展开选择格式（原下载图标与 Excel 按钮看起来重复） */}
+                <details className="export-menu" ref={exportMenu}>
+                  <summary className="button secondary small"><Icon name="download" />导出</summary>
+                  <div className="export-options" role="menu">
+                    <button type="button" role="menuitem" onClick={() => void exportFile("xlsx")}>Excel（.xlsx）<small>按当前月份与筛选</small></button>
+                    <button type="button" role="menuitem" onClick={() => void exportFile("csv")}>CSV<small>通用表格格式</small></button>
+                  </div>
+                </details>
               </div>
             </div>
             {activeFilters.length > 0 && (

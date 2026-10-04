@@ -60,17 +60,22 @@ class S3BlobStore:  # pragma: no cover - 真实 S3 在 D5 经授权验收
             raise
         if int(head["ContentLength"]) > max_bytes:
             raise ValueError("对象过大")
-        obj = self.c.get_object(Bucket=self.bucket, Key=key, VersionId=head["VersionId"])
-        return obj["Body"].read(max_bytes + 1), str(head["VersionId"])
+        version = str(head.get("VersionId") or "")
+        args = {"Bucket": self.bucket, "Key": key} | ({"VersionId": version} if version else {})
+        obj = self.c.get_object(**args)
+        return obj["Body"].read(max_bytes + 1), version
 
     def put(self, key: str, data: bytes, content_type: str) -> str:
+        """返回版本 ID；未开启版本控制的桶（导出桶）返回空字符串（2026-10-05 生产发现）。"""
         out = self.c.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)
-        return str(out["VersionId"])
+        return str(out.get("VersionId") or "")
 
     def presign_download(
         self, key: str, version_id: str, expires_s: int, filename: str | None = None
     ) -> str:
-        params: dict[str, Any] = {"Bucket": self.bucket, "Key": key, "VersionId": version_id}
+        params: dict[str, Any] = {"Bucket": self.bucket, "Key": key}
+        if version_id:  # 照片桶按版本签名；导出桶无版本
+            params["VersionId"] = version_id
         if filename:
             params["ResponseContentDisposition"] = f"attachment; filename*=UTF-8''{filename}"
         return str(self.c.generate_presigned_url("get_object", Params=params, ExpiresIn=expires_s))

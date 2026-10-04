@@ -62,6 +62,12 @@ test("首次登录→创建家庭→记一笔→编辑→退款→删除恢复",
   await expect(page.getByRole("cell", { name: "=SUM(A1) 超市", exact: true })).toBeVisible();
   await expect(page.locator(".spending-hero .number")).toContainText("5.00");
   await shot(page, "03-dashboard-one", project);
+  // 导出：一个“导出”按钮，展开两种格式；点 Excel 触发下载
+  await page.getByText("导出", { exact: true }).click();
+  await expect(page.getByRole("menuitem")).toHaveCount(2);
+  const download = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: /Excel/ }).click();
+  expect((await download).suggestedFilename()).toMatch(/\.xlsx$/);
 
   // 编辑：取消不变，保存更新同一行（ACC-12 浏览器旅程）
   await page.getByRole("button", { name: /查看或编辑/ }).first().click();
