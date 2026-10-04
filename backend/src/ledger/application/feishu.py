@@ -896,6 +896,8 @@ def handle_card(
 ) -> dict[str, Any]:
     """3 秒内同步完成并返回新卡片（ADR-0013 第 9 条）。身份只取 operator.open_id。"""
     body = open_envelope(raw_body, headers, secrets)
+    if body.get("type") == "url_verification":  # 配置卡片回调地址时的验证
+        return {"challenge": body.get("challenge", "")}
     header, event = body["header"], body["event"]
     open_id = (event.get("operator") or {}).get("open_id", "")
     action = event.get("action") or {}

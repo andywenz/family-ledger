@@ -92,16 +92,30 @@ def open_envelope(
     raw_body: bytes, headers: dict[str, str], secrets: FeishuSecrets, now: float | None = None
 ) -> dict[str, Any]:
     """验签 → 解密 → 校验 token、app_id、tenant_key。返回明文事件。"""
-    verify_request(headers, raw_body, secrets, now)
+    signed = all(
+        headers.get(h)
+        for h in ("x-lark-request-timestamp", "x-lark-request-nonce", "x-lark-signature")
+    )
+    if signed:
+        verify_request(headers, raw_body, secrets, now)  # 带签名头时签名必须正确
     try:
         outer = json.loads(raw_body)
     except ValueError:
         raise FeishuAuthError("请求体不是 JSON") from None
-    body = decrypt(outer["encrypt"], secrets.encrypt_key) if "encrypt" in outer else outer
+    if not isinstance(outer, dict):
+        raise FeishuAuthError("请求体不是对象")
+    cipher = outer.get("encrypt") or outer.get("encrypted")
+    body = decrypt(cipher, secrets.encrypt_key) if cipher else outer
     if body.get("type") == "url_verification":
+        # 配置请求地址时的验证：官方文档未写明是否带签名头（2026-10-04 核实不到），
+        # 因此允许无签名，但必须能用 Encrypt Key 解密且 token 正确；只回显 challenge，不处理任何数据
+        if not cipher and not signed:
+            raise FeishuAuthError("未加密且无签名的验证请求")
         if not hmac.compare_digest(str(body.get("token", "")), secrets.verification_token):
             raise FeishuAuthError("token 不匹配")
         return body
+    if not signed:
+        raise FeishuAuthError("缺少签名头")  # 普通事件与卡片回调必须带签名
     header = body.get("header") or {}
     if not hmac.compare_digest(str(header.get("token", "")), secrets.verification_token):
         raise FeishuAuthError("token 不匹配")
