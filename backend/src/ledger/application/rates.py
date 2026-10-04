@@ -34,12 +34,15 @@ def _cur_view(c: CurrencyMeta) -> dict[str, Any]:
 
 def list_global_currencies(ctx: AppContext, actor: Actor) -> list[dict[str, Any]]:
     load_profile(ctx, actor)
-    return [_cur_view(c) for c in repo.global_currencies(ctx).values()]
+    return [
+        _cur_view(c) for c in sorted(repo.global_currencies(ctx).values(), key=lambda c: c.code)
+    ]
 
 
 def list_family_currencies(ctx: AppContext, actor: Actor, fid: str) -> list[dict[str, Any]]:
     require_member(load_membership(ctx, actor, fid))
-    return [_cur_view(c) for c in repo.family_currencies(ctx, fid).values()]
+    currencies = repo.family_currencies(ctx, fid).values()
+    return [_cur_view(c) for c in sorted(currencies, key=lambda c: c.code)]  # 按字母顺序
 
 
 def create_global_currency(
@@ -224,8 +227,10 @@ def put_manual_rate(
 
 
 def store_provider_set(ctx: AppContext, rate_set: ProviderRateSet) -> bool:
-    """保存供应商汇率组。已存在则不覆盖（历史组不因再次抓取而变化）。返回是否新写入。"""
+    """保存供应商汇率组。已存在的日期：已有币种的汇率从不改写；只补入该组尚无的新币种
+    （新增全局币种后回补历史，2026-10-05）。返回是否有新写入。"""
     from ledger.adapters.dynamo.store import Tx
+    from ledger.domain.fx import decimal_str
 
     tx = Tx(ctx.store.table)
     tx.put_new(provider_set_item(rate_set))
@@ -233,7 +238,26 @@ def store_provider_set(ctx: AppContext, rate_set: ProviderRateSet) -> bool:
         ctx.store.commit(tx)
         return True
     except DomainError:
-        return False
+        pass
+    added = False
+    pk, sk = keys.provider_rates(rate_set.provider), rate_set.effective_date.isoformat()
+    existing = (ctx.store.get(pk, sk) or {}).get("rates", {})
+    for code, value in rate_set.rates.items():
+        if code in existing:
+            continue
+        try:
+            ctx.store.client.update_item(
+                TableName=ctx.store.table,
+                Key={"PK": {"S": pk}, "SK": {"S": sk}},
+                UpdateExpression="SET rates.#c = :v",
+                ConditionExpression="attribute_not_exists(rates.#c)",
+                ExpressionAttributeNames={"#c": code},
+                ExpressionAttributeValues={":v": {"S": decimal_str(value)}},
+            )
+            added = True
+        except ctx.store.client.exceptions.ConditionalCheckFailedException:
+            pass  # 并发写入同一币种：保留先写入的值
+    return added
 
 
 def sync_provider(ctx: AppContext, client: Any, start: date, end: date) -> int:

@@ -30,7 +30,7 @@ export default function Rates() {
           {resolved.data?.status === "ok" && (
             <>
               <p className="tiny-note">实际汇率日期 {resolved.data.effective_date}{resolved.data.effective_date !== date && "（该日无发布，取不晚于该日的最近完整组）"}</p>
-              {Object.entries(resolved.data.rates).map(([code, r]) => (
+              {Object.entries(resolved.data.rates).sort(([a], [b]) => a.localeCompare(b)).map(([code, r]) => (
                 <div key={code} className="rate-row">
                   <span className="rate-symbol">{code}</span>
                   <div><strong>{fam.currencies.find((c) => c.code === code)?.name_zh ?? code}</strong><small>{r.source === "family_manual" ? `家庭修正 · 第 ${r.revision} 版` : r.source === "base" ? "基准币种" : "ECB 数据源"}</small></div>

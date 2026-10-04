@@ -224,6 +224,12 @@ export class CoreStack extends Stack {
       schedule: Schedule.cron({ minute: "17", hour: "14" }), // 奥克兰凌晨
       targets: [new LambdaFunction(maintenance, { event: RuleTargetInput.fromObject({ tasks: ["trash", "orphans", "batches", "budget"] }) })],
     });
+    // 每日同步 ECB 汇率（ECB 约 16:00 CET 发布；UTC 16:30 之后拉取，补最近 10 天）。
+    // 2026-10-05 发现上线后缺少此任务：初始化之后无新汇率，7 天回看用尽后新账目将无法折算。
+    new Rule(this, "RateSync", {
+      schedule: Schedule.cron({ minute: "30", hour: "16" }),
+      targets: [new LambdaFunction(maintenance, { event: RuleTargetInput.fromObject({ tasks: ["rates"] }) })],
+    });
     new Rule(this, "DeliverySweep", {
       schedule: Schedule.rate(Duration.minutes(5)),
       targets: [new LambdaFunction(maintenance, { event: RuleTargetInput.fromObject({ tasks: ["outbox"] }) })],

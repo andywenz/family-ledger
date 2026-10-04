@@ -1,11 +1,18 @@
 {
   "schema_version": 1,
-  "notes": "全局币种元数据。minor_digits 决定原币金额最大小数位；NZD/CNY 折算值固定两位。provider_supported 表示 ECB（经 Frankfurter）是否发布该币种；不支持的币种只能由家庭管理员补录汇率（ADR-0004）。",
+  "notes": "全局币种元数据。minor_digits 决定原币金额最大小数位；NZD/CNY 折算值固定两位。provider_supported 表示 ECB（经 Frankfurter）是否发布该币种；不支持的币种只能由家庭管理员补录汇率（ADR-0004）。 按币种代码字母顺序排列。MOP（澳门元）ECB 不发布，需家庭补录（与港币挂钩，约 1 HKD = 1.03 MOP）。",
   "currencies": [
-    {"code": "NZD", "name_zh": "新西兰元", "minor_digits": 2, "provider_supported": true, "initial": true},
-    {"code": "CNY", "name_zh": "人民币", "minor_digits": 2, "provider_supported": true, "initial": true},
-    {"code": "USD", "name_zh": "美元", "minor_digits": 2, "provider_supported": true, "initial": true},
     {"code": "AUD", "name_zh": "澳大利亚元", "minor_digits": 2, "provider_supported": true, "initial": true},
-    {"code": "EUR", "name_zh": "欧元", "minor_digits": 2, "provider_supported": true, "initial": true}
+    {"code": "CAD", "name_zh": "加拿大元", "minor_digits": 2, "provider_supported": true, "initial": false},
+    {"code": "CNY", "name_zh": "人民币", "minor_digits": 2, "provider_supported": true, "initial": true},
+    {"code": "EUR", "name_zh": "欧元", "minor_digits": 2, "provider_supported": true, "initial": true},
+    {"code": "GBP", "name_zh": "英镑", "minor_digits": 2, "provider_supported": true, "initial": false},
+    {"code": "HKD", "name_zh": "港币", "minor_digits": 2, "provider_supported": true, "initial": false},
+    {"code": "JPY", "name_zh": "日元", "minor_digits": 0, "provider_supported": true, "initial": false},
+    {"code": "KRW", "name_zh": "韩元", "minor_digits": 0, "provider_supported": true, "initial": false},
+    {"code": "MOP", "name_zh": "澳门元", "minor_digits": 2, "provider_supported": false, "initial": false},
+    {"code": "NZD", "name_zh": "新西兰元", "minor_digits": 2, "provider_supported": true, "initial": true},
+    {"code": "SGD", "name_zh": "新加坡元", "minor_digits": 2, "provider_supported": true, "initial": false},
+    {"code": "USD", "name_zh": "美元", "minor_digits": 2, "provider_supported": true, "initial": true}
   ]
 }

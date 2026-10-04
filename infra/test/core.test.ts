@@ -163,3 +163,10 @@ test("CloudFront：前端路由由函数改写为 index.html；不再用错误�
   const fns = Object.values(t.findResources("AWS::CloudFront::Function")) as any[];
   if (!fns.some((f) => String(f.Properties.FunctionCode).includes("/index.html"))) throw new Error("缺少 SPA 改写函数");
 });
+
+test("每日同步汇率：维护任务在 ECB 发布后运行", () => {
+  t.hasResourceProperties("AWS::Events::Rule", {
+    ScheduleExpression: "cron(30 16 * * ? *)",
+    Targets: Match.arrayWith([Match.objectLike({ Input: JSON.stringify({ tasks: ["rates"] }) })]),
+  });
+});

@@ -70,7 +70,7 @@ def test_ops12_empty_ledger_with_admin_only(ctx: AppContext) -> None:
     idp = Idp()
     r = run(ctx, idp)
     assert (r.users, r.families, r.entries) == (1, 0, 0)  # 不自动出现任何家庭或账目
-    assert r.currencies_added == 5 and r.rate_sets_added > 0
+    assert r.currencies_added == 12 and r.rate_sets_added > 0  # seed/currencies.json 全部币种
     assert r.latest_rate_date == "2026-10-05"  # 周一，当天有完整汇率组
     assert r.admin_created and r.temporary_password and len(idp.created) == 1
     assert idp.created[0][1] == r.temporary_password

@@ -176,8 +176,13 @@ def check_currencies(spec: dict[str, Any]) -> list[str]:
     for c in data["currencies"]:
         for err in validator.iter_errors(c):
             errors.append(f"币种 {c.get('code')}: {err.message}")
-    if sorted(codes) != sorted({"NZD", "CNY", "USD", "AUD", "EUR"}):
-        errors.append(f"初始币种应为五币：{codes}")
+    initial = [c["code"] for c in data["currencies"] if c.get("initial")]
+    if sorted(initial) != sorted({"NZD", "CNY", "USD", "AUD", "EUR"}):
+        errors.append(f"初始币种应为五币：{initial}")
+    if codes != sorted(codes):
+        errors.append("币种应按代码字母顺序排列")
+    if len(set(codes)) != len(codes):
+        errors.append("币种代码重复")
     return errors
 
 

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from ledger.adapters.dynamo import keys
 from ledger.adapters.dynamo.store import Tx
 from ledger.domain.errors import DomainError
 
-from . import attachments, costs, entries, feishu, recognition
+from . import attachments, costs, entries, feishu, rates, recognition
 from .context import AppContext
 
 CANDIDATE_FIELDS_CLEARED = (
@@ -79,6 +79,19 @@ def expire_batches(ctx: AppContext, now: datetime | None = None) -> int:
     return n
 
 
+RATE_SYNC_DAYS = 10  # 每天补拉最近 10 天：漏跑几天也能补上；已存在的日期不覆盖
+
+
+def sync_recent_rates(ctx: AppContext, now: datetime | None = None, client: Any = None) -> int:
+    """每日同步供应商（ECB）汇率。上线后缺少此任务会导致 7 天后新账目缺汇率（2026-10-05 发现）。"""
+    from ledger.adapters.frankfurter import FrankfurterClient
+
+    today = (now or ctx.clock()).date()
+    return rates.sync_provider(
+        ctx, client or FrankfurterClient(), today - timedelta(days=RATE_SYNC_DAYS), today
+    )
+
+
 def run(
     ctx: AppContext,
     *,
@@ -88,6 +101,8 @@ def run(
     now: datetime | None = None,
 ) -> dict[str, Any]:
     out: dict[str, Any] = {}
+    if "rates" in tasks:
+        out["rate_sets_added"] = sync_recent_rates(ctx, now)
     if "outbox" in tasks and feishu_api is not None:  # 飞书未配置时消息保持待发送
         out["feishu_delivered"] = feishu.deliver_due(ctx, feishu_api, now)
     if "trash" in tasks:
