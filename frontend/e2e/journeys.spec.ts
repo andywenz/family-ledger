@@ -204,3 +204,49 @@ test("我的账号：生成飞书绑定码", async ({ page }, info) => {
   await shot(page, "10-feishu-binding", info.project.name);
   await noHorizontalOverflow(page);
 });
+
+test("界面风格：三种可切换并在刷新后保持", async ({ page }, info) => {
+  const project = info.project.name;
+  await signInAdmin(page);
+  await openFamilyPage(page, `家-${project}`, "分类管理");
+  await page.getByRole("link", { name: "月度总览" }).click();
+  const dir = process.env.THEME_SHOTS_DIR;
+  for (const [id, label] of [["juicy", "果汁色块"], ["night", "夜光"], ["pop", "手账波普"]] as const) {
+    await page.getByTitle(label).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", id);
+    await noHorizontalOverflow(page);
+    if (dir) {
+      // 等数据加载完、颜色过渡结束再截图
+      const settle = async () => { await page.waitForLoadState("networkidle", { timeout: 3000 }).catch(() => undefined); await page.waitForTimeout(600); };
+      await expect(page.getByText("本月明细")).toBeVisible();
+      await settle();
+      await page.screenshot({ path: `${dir}/${id}-dashboard-${project}.png`, fullPage: true });
+      await page.getByRole("link", { name: "记一笔" }).first().click();
+      await expect(page.getByLabel("原始金额")).toBeVisible();
+      await settle();
+      await page.screenshot({ path: `${dir}/${id}-new-${project}.png`, fullPage: true });
+      await page.getByRole("link", { name: "AI 帮我记" }).first().click();
+      await expect(page.getByLabel("今天有什么开销？")).toBeVisible();
+      await settle();
+      await page.screenshot({ path: `${dir}/${id}-ai-${project}.png`, fullPage: true });
+      await page.getByRole("link", { name: "月度总览" }).first().click();
+      if (project === "desktop") {
+        await expect(page.getByText("本月明细")).toBeVisible();
+        const dashboardUrl = page.url();
+        await page.getByRole("button", { name: /查看或编辑/ }).first().click();
+        await settle();
+        await page.screenshot({ path: `${dir}/${id}-dialog-${project}.png` });
+        await page.keyboard.press("Escape");
+        for (const [link, name] of [["分类管理", "categories"], ["家庭与设置", "settings"], ["回收站", "trash"], ["我的账号", "account"], ["系统账号", "admin"], ["费用与告警", "costs"]] as const) {
+          await page.getByRole("link", { name: link }).first().click();
+          await settle();
+          await page.screenshot({ path: `${dir}/${id}-${name}-${project}.png`, fullPage: true });
+        }
+        await page.goto(dashboardUrl); // 系统页面不在家庭内，侧栏没有“月度总览”
+      }
+    }
+  }
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "pop"); // 刷新后保持上次选择
+  await page.getByTitle("果汁色块").click();
+});

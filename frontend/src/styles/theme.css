@@ -1,0 +1,257 @@
+/* 界面风格（2026-10-05 用户选定）：果汁色块（默认）／夜光／手账波普，右上角切换。
+   结构沿用 prototype.css／app.css，这里只覆盖颜色、字体、圆角、描边与阴影。
+   字重比备选稿略细：标题 800、强调 700、正文 400–500。所有主要文字对比度 ≥ 4.5:1。 */
+
+/* ── 三套变量 ── */
+html[data-theme="juicy"]{
+  --bg:#FAF8F3;--surface:#FFFFFF;--surface-2:#F3F0EA;--ink:#141414;--muted:#454545;--line:#E7E2D8;
+  --side-bg:#E9E3FF;--side-ink:#141414;--side-border:0;
+  --nav-on-bg:#141414;--nav-on-ink:#FFFFFF;--nav-hover:#DCD3FF;
+  --accent:#5B2EFF;--accent-ink:#FFFFFF;--accent-soft:#E9E3FF;--accent-text:#4A1FE0;
+  --hero-bg:#FFE0CC;--hero-ink:#141414;--hero-sub:#3A2A20;--hero-pill:#141414;--hero-pill-ink:#FFE0CC;
+  --card-border:0;--card-shadow:none;--radius:24px;--radius-sm:14px;
+  --btn-border:0;--btn-shadow:none;--btn2-bg:#FFFFFF;--btn2-border:1px solid #DDD6CA;
+  --th-bg:#CFF5E1;--th-ink:#141414;--row-line:1px solid #ECE8DF;
+  --chip-bg:#F3F0EA;--input-bg:#FFFFFF;--input-border:1.5px solid #D9D2C5;--focus:#5B2EFF;
+  --tag-bg:#E9E3FF;--tag-ink:#2C1A80;--income-bg:#CFF5E1;--income-ink:#0E5A34;--refund-bg:#FFE0CC;--refund-ink:#7A3A10;
+  --warn-bg:#FFF1D6;--warn-ink:#6B4300;--warn-line:#F2D49A;--err-bg:#FFE4E4;--err-ink:#8A1F1F;--err-line:#F3C2C2;
+  --card2-bg:#CFF5E1;--card3-bg:#E9E3FF;--dialog-bg:#FFFFFF;--backdrop:#14141466;
+  --c1:#5B2EFF;--c2:#FF7A45;--c3:#18A957;--c4:#E8397D;--c5:#F5B700;--c6:#1E9BD7;--c7:#A35BFF;--c8:#8C8C8C;--c9:#3D3D3D;
+}
+html[data-theme="night"]{
+  --bg:#0B0F14;--surface:#151B23;--surface-2:#1C2430;--ink:#F2F5F9;--muted:#AEB9C7;--line:#263040;
+  --side-bg:#10151C;--side-ink:#F2F5F9;--side-border:1px solid #232B36;
+  --nav-on-bg:#3DF5A5;--nav-on-ink:#06231A;--nav-hover:#1C2430;
+  --accent:#3DF5A5;--accent-ink:#06231A;--accent-soft:#183528;--accent-text:#3DF5A5;
+  --hero-bg:linear-gradient(135deg,#3DF5A5,#3DD6F5);--hero-ink:#06231A;--hero-sub:#0B3A2C;--hero-pill:#0B0F14;--hero-pill-ink:#3DF5A5;
+  --card-border:1px solid #263040;--card-shadow:none;--radius:20px;--radius-sm:12px;
+  --btn-border:0;--btn-shadow:0 0 18px #3df5a540;--btn2-bg:#1C2430;--btn2-border:1px solid #2E3a4C;
+  --th-bg:#1C2430;--th-ink:#F2F5F9;--row-line:1px solid #232B36;
+  --chip-bg:#1C2430;--input-bg:#0F141B;--input-border:1.5px solid #34404F;--focus:#3DF5A5;
+  --tag-bg:#22303F;--tag-ink:#BFD3E6;--income-bg:#163A2B;--income-ink:#7CF7C1;--refund-bg:#3A2A1C;--refund-ink:#FFC48A;
+  --warn-bg:#3A2E14;--warn-ink:#FFD58A;--warn-line:#5C4A1E;--err-bg:#3A1A1F;--err-ink:#FFB3BD;--err-line:#5C2A32;
+  --card2-bg:var(--surface);--card3-bg:var(--surface);--dialog-bg:#151B23;--backdrop:#000000a6;
+  --c1:#3DF5A5;--c2:#FFC857;--c3:#FF6B8B;--c4:#5AA9FF;--c5:#C084FC;--c6:#3DD6F5;--c7:#FF9F5A;--c8:#8A96A6;--c9:#E6EDF5;
+}
+html[data-theme="pop"]{
+  --bg:#FFF4DE;--surface:#FFFFFF;--surface-2:#FFF4DE;--ink:#161616;--muted:#3B3B3B;--line:#161616;
+  --side-bg:#FFD23F;--side-ink:#161616;--side-border:3px solid #161616;
+  --nav-on-bg:#161616;--nav-on-ink:#FFD23F;--nav-hover:#FFE07A;
+  --accent:#FF5A36;--accent-ink:#161616;--accent-soft:#FFE0D6;--accent-text:#B32A0C;
+  --hero-bg:#7BE0B8;--hero-ink:#161616;--hero-sub:#1E3B30;--hero-pill:#161616;--hero-pill-ink:#FFD23F;
+  --card-border:3px solid #161616;--card-shadow:5px 5px 0 #161616;--radius:18px;--radius-sm:12px;
+  --btn-border:3px solid #161616;--btn-shadow:3px 3px 0 #161616;--btn2-bg:#FFFFFF;--btn2-border:3px solid #161616;
+  --th-bg:#161616;--th-ink:#FFD23F;--row-line:2px dashed #161616;
+  --chip-bg:#FFF4DE;--input-bg:#FFFFFF;--input-border:2.5px solid #161616;--focus:#FF5A36;
+  --tag-bg:#FFD23F;--tag-ink:#161616;--income-bg:#7BE0B8;--income-ink:#161616;--refund-bg:#FFB3A3;--refund-ink:#161616;
+  --warn-bg:#FFE9A8;--warn-ink:#3D2A00;--warn-line:#161616;--err-bg:#FFC9C0;--err-ink:#5A0E00;--err-line:#161616;
+  --card2-bg:var(--surface);--card3-bg:var(--surface);--dialog-bg:#FFFFFF;--backdrop:#16161699;
+  --c1:#FF5A36;--c2:#FFD23F;--c3:#2FBF8A;--c4:#6C8CFF;--c5:#FF8CC0;--c6:#9B6BFF;--c7:#2DB4E8;--c8:#A89F90;--c9:#161616;
+}
+
+/* ── 字体与基础 ── */
+html[data-theme]{--paper:var(--bg);--white:var(--surface);--green:var(--accent)}
+html[data-theme] body{background:var(--bg);color:var(--ink);font-family:"Nunito Variable","PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif}
+html[data-theme] .number,html[data-theme] .budget-number,html[data-theme] .donut-center strong,
+html[data-theme] .amount-input input,html[data-theme] .candidate-header strong,html[data-theme] .rate-row>b{font-family:"Nunito Variable",system-ui,sans-serif;font-weight:800;letter-spacing:-.5px}
+html[data-theme] ::selection{background:var(--accent);color:var(--accent-ink)}
+
+/* ── 侧栏与导航 ── */
+html[data-theme] .sidebar{background:var(--side-bg);color:var(--side-ink);border-right:var(--side-border)}
+html[data-theme] .brand{color:var(--side-ink);font-weight:800}
+html[data-theme] .brand small,html[data-theme] .nav-label,html[data-theme] .family-switch small,html[data-theme] .profile small{color:var(--side-ink);opacity:.8}
+html[data-theme] .brand-mark{background:var(--nav-on-bg);color:var(--nav-on-ink);border:var(--card-border);font-family:inherit;font-weight:800;border-radius:var(--radius-sm)}
+html[data-theme] .family-switch{background:var(--surface);border:var(--card-border);border-radius:var(--radius-sm);color:var(--ink)}
+html[data-theme] .family-select select{color:var(--ink);font-weight:700}
+html[data-theme] nav a{color:var(--side-ink);font-weight:600;border-radius:var(--radius-sm)}
+html[data-theme] nav a:hover{background:var(--nav-hover);color:var(--side-ink)}
+html[data-theme] nav a.active{background:var(--nav-on-bg);color:var(--nav-on-ink)}
+html[data-theme="pop"] nav a.active{box-shadow:3px 3px 0 #FF5A36}
+html[data-theme="night"] nav a.active{box-shadow:0 0 18px #3df5a540}
+html[data-theme] .daily-note{border-top-color:var(--line);color:var(--side-ink)}
+html[data-theme] .daily-note p,html[data-theme] .daily-note small{color:var(--side-ink)}
+html[data-theme] .profile strong{color:var(--side-ink)}
+html[data-theme] .avatar{background:var(--surface);color:var(--ink);border:var(--card-border)}
+
+/* ── 顶栏与页头 ── */
+html[data-theme] .topbar{background:var(--bg);border-bottom:var(--row-line)}
+html[data-theme="pop"] .topbar{border-bottom:3px solid #161616}
+html[data-theme] .breadcrumb,html[data-theme] .breadcrumb span{color:var(--muted)}
+html[data-theme] .breadcrumb strong{color:var(--ink);font-weight:700}
+html[data-theme] .page-heading h1{color:var(--ink);font-weight:800}
+html[data-theme] .page-heading p,html[data-theme] .eyebrow{color:var(--muted)}
+html[data-theme] .month-picker{background:var(--surface);border:var(--btn2-border);border-radius:999px}
+html[data-theme] .month-picker strong{color:var(--ink);font-weight:700}
+html[data-theme] .icon-button{color:var(--ink)}
+html[data-theme] .icon-button:hover{background:var(--chip-bg);color:var(--ink)}
+
+/* 风格切换 */
+.theme-switch{display:inline-flex;gap:4px;padding:4px;border-radius:999px;background:var(--surface,#fff);border:var(--btn2-border,1px solid #ddd)}
+.theme-switch button{border:0;background:transparent;color:var(--ink,#111);border-radius:999px;padding:5px 11px;font:inherit;font-size:13px;font-weight:600;display:inline-flex;gap:5px;align-items:center;cursor:pointer;min-height:32px}
+.theme-switch button[aria-pressed="true"]{background:var(--nav-on-bg,#111);color:var(--nav-on-ink,#fff)}
+.auth-page{position:relative}
+.auth-theme{position:absolute;top:16px;right:16px}
+@media(max-width:650px){.theme-switch .theme-label{display:none}.theme-switch button{padding:5px 8px}}
+
+/* ── 卡片 ── */
+html[data-theme] .card{background:var(--surface);border:var(--card-border);border-radius:var(--radius);box-shadow:var(--card-shadow);color:var(--ink)}
+html[data-theme] .section-head h2,html[data-theme] .ledger-top h2,html[data-theme] .card h2,html[data-theme] .card h3{color:var(--ink);font-weight:800}
+html[data-theme] .section-head small,html[data-theme] .ledger-top h2 small{color:var(--muted)}
+html[data-theme] .dashboard-top>.card:nth-child(2){background:var(--card2-bg)}
+html[data-theme] .dashboard-top>.card:nth-child(3){background:var(--card3-bg)}
+html[data-theme] .spending-hero{background:var(--hero-bg);color:var(--hero-ink);border:var(--card-border)}
+html[data-theme] .spending-hero:after{border-color:#ffffff40;box-shadow:none}
+html[data-theme] .spending-hero .card-label,html[data-theme] .spending-hero .currency-kicker{color:var(--hero-ink);font-weight:700}
+html[data-theme] .spending-hero .secondary-amount{color:var(--hero-sub);font-weight:600}
+html[data-theme] .spending-hero .card-footnote{display:inline-block;background:var(--hero-pill);color:var(--hero-pill-ink);border-radius:999px;padding:4px 12px;font-weight:700}
+html[data-theme] .spending-hero .card-footnote .dot{background:var(--hero-pill-ink)}
+html[data-theme] .card-label,html[data-theme] .currency-kicker,html[data-theme] .card-footnote{color:var(--muted)}
+html[data-theme] .secondary-amount{color:var(--muted)}
+html[data-theme] .aside-note{background:var(--accent-soft);border:var(--card-border);color:var(--ink)}
+html[data-theme] .aside-note p,html[data-theme] .aside-note h3{color:var(--ink)}
+
+/* 饼图与消费方式 */
+html[data-theme] .donut:before{background:var(--surface)}
+html[data-theme] .dashboard-top>.card:nth-child(2) .donut:before{background:var(--card2-bg)}
+html[data-theme] .donut-center{color:var(--muted);font-weight:600}
+html[data-theme] .donut-center strong{color:var(--ink)}
+html[data-theme] .legend-row{color:var(--ink);font-weight:600}
+html[data-theme] .legend-row b{color:var(--ink);font-weight:700}
+html[data-theme="pop"] .legend-dot{outline:2px solid #161616}
+html[data-theme] .payment-row{border-bottom:var(--row-line)}
+html[data-theme] .payment-row:last-child{border-bottom:0}
+html[data-theme] .payment-icon{background:var(--surface);color:var(--ink);border:var(--card-border);border-radius:var(--radius-sm)}
+html[data-theme] .payment-label{color:var(--ink);font-weight:700}
+html[data-theme] .payment-label small,html[data-theme] .payment-amount small{color:var(--muted);font-weight:500}
+html[data-theme] .payment-amount strong{color:var(--ink);font-weight:800}
+
+/* ── 按钮 ── */
+html[data-theme] .button{border-radius:var(--radius-sm);font-weight:700}
+html[data-theme] .button.primary,html[data-theme] .primary{background:var(--accent);color:var(--accent-ink);border:var(--btn-border);box-shadow:var(--btn-shadow)}
+html[data-theme] .button.primary:hover{filter:brightness(1.05)}
+html[data-theme] .button.secondary,html[data-theme] .secondary{background:var(--btn2-bg);color:var(--ink);border:var(--btn2-border)}
+html[data-theme] .button.danger{color:var(--err-ink);border-color:var(--err-line)}
+html[data-theme] .button.primary.danger{background:var(--err-ink);color:var(--surface);border-color:var(--err-ink)}
+html[data-theme] .text-button{color:var(--accent-text);font-weight:700}
+html[data-theme] .button:focus-visible,html[data-theme] a:focus-visible,html[data-theme] button:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+
+/* ── 表单 ── */
+html[data-theme] .field{color:var(--ink);font-weight:600}
+html[data-theme] .field input,html[data-theme] .field select,html[data-theme] .field textarea,
+html[data-theme] .filters select,html[data-theme] .search-box{background:var(--input-bg);color:var(--ink);border:var(--input-border);border-radius:var(--radius-sm)}
+html[data-theme] .field input::placeholder,html[data-theme] .field textarea::placeholder,html[data-theme] .search-box input::placeholder{color:var(--muted)}
+html[data-theme] .search-box input{background:transparent;color:var(--ink)}
+html[data-theme] .field input:focus,html[data-theme] .field select:focus,html[data-theme] .field textarea:focus{border-color:var(--focus)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 25%,transparent)!important}
+html[data-theme] .field input:disabled{background:var(--surface-2);color:var(--muted)}
+html[data-theme] .ai-input{background:var(--input-bg)!important}
+html[data-theme] .sub-label{color:var(--muted)}
+html[data-theme] .tabs{background:var(--chip-bg);border:var(--card-border);border-radius:var(--radius-sm)}
+html[data-theme] .tabs a,html[data-theme] .tabs button{color:var(--muted);font-weight:600}
+html[data-theme] .tabs .selected{background:var(--nav-on-bg);color:var(--nav-on-ink);font-weight:700;box-shadow:none}
+html[data-theme] .type-control button{background:var(--surface);color:var(--muted);border:var(--btn2-border);font-weight:600}
+html[data-theme] .type-control button.selected{background:var(--nav-on-bg);color:var(--nav-on-ink);border-color:var(--nav-on-bg)}
+html[data-theme] .conversion-strip{background:var(--surface-2);color:var(--muted);border:var(--card-border);border-radius:var(--radius-sm)}
+html[data-theme] .conversion-strip strong{color:var(--ink)}
+html[data-theme] .upload-zone,html[data-theme] .upload-button{background:var(--surface-2);color:var(--ink);border:2px dashed var(--muted)}
+html[data-theme] .upload-chip{background:var(--surface-2);color:var(--ink);border-color:var(--line)}
+html[data-theme] .inline-check{color:var(--ink)}
+html[data-theme] .form-actions{border-top:var(--row-line)}
+
+/* ── 表格与标签 ── */
+html[data-theme] .ledger-card{overflow:hidden}
+html[data-theme] th{background:var(--th-bg);color:var(--th-ink);font-weight:700;border-block:0}
+html[data-theme] td{color:var(--ink);border-bottom:var(--row-line)}
+html[data-theme] .entry-symbol{background:var(--chip-bg);color:var(--ink)}
+html[data-theme] .badge{background:var(--tag-bg);color:var(--tag-ink);font-weight:700;border-radius:999px}
+html[data-theme] .badge.income{background:var(--income-bg);color:var(--income-ink)}
+html[data-theme] .badge.refund{background:var(--refund-bg);color:var(--refund-ink)}
+html[data-theme="pop"] .badge{border:2px solid #161616}
+html[data-theme] .income-text{color:var(--income-ink)!important}
+html[data-theme] .no-stat,html[data-theme] .ledger-bottom,html[data-theme] .site-footer{color:var(--muted)}
+html[data-theme] .delete-row{color:var(--muted)}
+html[data-theme] .delete-row:hover{color:var(--err-ink);background:var(--err-bg)}
+html[data-theme] .empty,html[data-theme] .muted,html[data-theme] .tiny-note{color:var(--muted)}
+html[data-theme] .filter-note{background:var(--surface-2);color:var(--ink)}
+html[data-theme] .export-options{background:var(--surface);border:var(--card-border);box-shadow:var(--card-shadow)}
+html[data-theme] .export-options button{color:var(--ink)}
+html[data-theme] .export-options button:hover{background:var(--chip-bg)}
+html[data-theme] .export-options small{color:var(--muted)}
+
+/* ── 提示与状态 ── */
+html[data-theme] .notice{background:var(--surface-2);color:var(--ink);border:var(--card-border);border-radius:var(--radius-sm)}
+html[data-theme] .error-notice,html[data-theme] .form-error,html[data-theme] .upload-chip.rejected{background:var(--err-bg);color:var(--err-ink);border:1.5px solid var(--err-line)}
+html[data-theme] .unknown-notice,html[data-theme] .review-state{background:var(--warn-bg);color:var(--warn-ink);border:1.5px solid var(--warn-line)}
+html[data-theme] .tiny-note.warn,html[data-theme] .warn{color:var(--warn-ink)}
+html[data-theme] .field-tag{background:var(--tag-bg);color:var(--tag-ink)}
+html[data-theme] .field-tag.inferred,html[data-theme] .field-tag.review{background:var(--warn-bg);color:var(--warn-ink)}
+html[data-theme] .preview-tag{background:var(--warn-bg);color:var(--warn-ink);border-color:var(--warn-line)}
+html[data-theme] .secret-notice code{background:var(--input-bg);color:var(--ink);border:var(--input-border)}
+
+/* ── 列表行、分类、汇率、AI 候选 ── */
+html[data-theme] .member-row,html[data-theme] .rate-row,html[data-theme] .category-row{border-bottom:var(--row-line)}
+html[data-theme] .member-row strong,html[data-theme] .rate-row strong,html[data-theme] .category-row{color:var(--ink)}
+html[data-theme] .member-row small,html[data-theme] .rate-row small,html[data-theme] .category-row small{color:var(--muted)}
+html[data-theme] .category-icon,html[data-theme] .rate-symbol{background:var(--chip-bg);color:var(--ink)}
+html[data-theme] .new-category{background:var(--surface-2);color:var(--ink);border:2px dashed var(--muted)}
+html[data-theme] .candidate-card{background:var(--surface);border:var(--card-border);border-radius:var(--radius-sm);box-shadow:var(--card-shadow)}
+html[data-theme="juicy"] .candidate-card{border:1.5px solid #E2DCF7}
+html[data-theme] .candidate-info{color:var(--muted);border-top:var(--row-line)}
+html[data-theme] .recompute-preview{background:var(--surface-2);border:var(--card-border)}
+html[data-theme] .detail-list dt{color:var(--muted)}
+html[data-theme] .detail-list dd{color:var(--ink)}
+html[data-theme] .budget-number small{color:var(--muted)}
+html[data-theme] .progress{background:var(--surface-2)}
+html[data-theme] .progress span{background:var(--accent)}
+
+/* ── 对话框、菜单、提示条 ── */
+html[data-theme] dialog{background:var(--dialog-bg);color:var(--ink);border:var(--card-border);border-radius:var(--radius);box-shadow:var(--card-shadow),0 25px 80px #0003}
+html[data-theme] dialog::backdrop{background:var(--backdrop)}
+html[data-theme] .dialog-heading h2{color:var(--ink);font-weight:800}
+html[data-theme] .more-sheet a{color:var(--ink);font-weight:600}
+html[data-theme] .more-sheet a:hover,html[data-theme] .more-sheet a.active{background:var(--chip-bg)}
+html[data-theme] #toast{background:var(--nav-on-bg);color:var(--nav-on-ink);border:var(--card-border);font-weight:700}
+
+/* ── 手机底部导航 ── */
+@media(max-width:650px){
+  html[data-theme] .sidebar{background:var(--side-bg);border-top:var(--side-border);border-right:0}
+  html[data-theme="night"] .sidebar{background:#10151Cf2}
+  html[data-theme] nav a{color:var(--side-ink);background:none!important;font-weight:600}
+  html[data-theme] nav a.active{color:var(--side-ink)}
+  html[data-theme] nav a.active svg{color:var(--side-ink)}
+  html[data-theme] nav a.active::after{content:"";display:block;width:20px;height:3px;border-radius:2px;background:var(--side-ink)}
+  html[data-theme="night"] nav a.active,html[data-theme="night"] nav a.active svg{color:#3DF5A5}
+  html[data-theme="night"] nav a.active::after{background:#3DF5A5}
+  html[data-theme] .nav-more{color:var(--side-ink);font-weight:600}
+  html[data-theme] .topbar{padding:0 14px;gap:10px}
+  html[data-theme] nav a.active{box-shadow:none}
+  html[data-theme] .breadcrumb{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  html[data-theme] .topbar-right{flex-shrink:0}
+  html[data-theme] .preview-tag{white-space:nowrap}
+}
+
+/* ── 覆盖 prototype.css 后段的“可读性修订”（.ledger-card 与 #record-dialog 写死了白底黑字） ── */
+html[data-theme] .ledger-card,html[data-theme] .ledger-card table{background:var(--surface);color:var(--ink)}
+html[data-theme] .ledger-card .ledger-top h2{color:var(--ink)}
+html[data-theme] .ledger-card th{background:var(--th-bg);color:var(--th-ink);border-color:transparent}
+html[data-theme] .ledger-card td{background:var(--surface);color:var(--ink);border-bottom:var(--row-line)}
+html[data-theme] .ledger-card tbody tr:hover td{background:var(--chip-bg)}
+html[data-theme] .ledger-card .income-text{color:var(--income-ink)!important}
+html[data-theme] .ledger-card .entry-symbol,html[data-theme] .ledger-card .entry-symbol.income{background:var(--chip-bg);color:var(--ink)}
+html[data-theme] .ledger-card .badge{background:var(--tag-bg);color:var(--tag-ink);border:var(--tag-border,0);font-weight:700}
+html[data-theme] .ledger-card .badge.income{background:var(--income-bg);color:var(--income-ink)}
+html[data-theme] .ledger-card .badge.refund{background:var(--refund-bg);color:var(--refund-ink)}
+html[data-theme="pop"] .ledger-card .badge{border:2px solid #161616}
+html[data-theme] .ledger-card .sub-label,html[data-theme] .ledger-card .ledger-top h2 small,html[data-theme] .ledger-card .ledger-bottom{color:var(--muted)}
+html[data-theme] .ledger-card .filters select,html[data-theme] .ledger-card .search-box{background:var(--input-bg);color:var(--ink);border:var(--input-border)}
+html[data-theme] .ledger-card .search-box input{color:var(--ink)}
+html[data-theme] .ledger-card .search-box input::placeholder{color:var(--muted)}
+html[data-theme] .ledger-card .icon-button{color:var(--ink)}
+html[data-theme] .ledger-card .delete-row:hover{color:var(--err-ink);background:var(--err-bg)}
+html[data-theme] .edit-row,html[data-theme] .ledger-card .edit-row{background:var(--btn2-bg);color:var(--ink);border:var(--btn2-border);border-radius:var(--radius-sm);font-weight:700}
+html[data-theme] .edit-row:hover,html[data-theme] .ledger-card .edit-row:hover{background:var(--chip-bg)}
+html[data-theme] #record-dialog{background:var(--dialog-bg);color:var(--ink);border:var(--card-border);border-radius:var(--radius)}
+html[data-theme] #record-dialog .field{color:var(--ink)}
+html[data-theme] #record-dialog input,html[data-theme] #record-dialog select,html[data-theme] #record-dialog textarea{background:var(--input-bg);color:var(--ink);border:var(--input-border)}
+html[data-theme] #record-dialog .tiny-note{color:var(--muted)}
+html[data-theme] #record-dialog .conversion-strip{background:var(--surface-2);color:var(--muted)}
+html[data-theme] #record-dialog .conversion-strip strong{color:var(--ink)}

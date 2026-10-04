@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { ApiError, api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { ThemeSwitcher } from "../components/ThemeSwitcher";
 
 type LoginResult = { status: "ok"; access_token: string } | { status: "challenge"; challenge_session: string };
 
@@ -44,6 +45,7 @@ export function Login() {
 
   return (
     <div className="auth-page">
+      <div className="auth-theme"><ThemeSwitcher /></div>
       <form className="card auth-card" onSubmit={submit}>
         <div className="brand"><span className="brand-mark">家</span><span>小家账本<small>OUR DAILY LEDGER</small></span></div>
         <h1>登录</h1>
@@ -85,6 +87,7 @@ export function NewPassword() {
 
   return (
     <div className="auth-page">
+      <div className="auth-theme"><ThemeSwitcher /></div>
       <form className="card auth-card" onSubmit={submit}>
         <h1>设置新密码</h1>
         <p className="tiny-note">首次登录或管理员重置后，需要设置自己的密码：至少 10 位，同时包含字母和数字。</p>

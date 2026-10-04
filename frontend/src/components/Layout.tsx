@@ -3,6 +3,7 @@ import { NavLink, Navigate, Outlet, useNavigate, useParams } from "react-router"
 import { api, type CategoryTree, type Currency, type Member, type Schemas } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorNotice, Modal, useLoad } from "./common";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 import { Icon } from "./Icon";
 
 type FamilyData = {
@@ -105,6 +106,7 @@ function Shell({ breadcrumb, familyName, children, fid }: { breadcrumb: string; 
           </div>
           <div className="topbar-right">
             {env === "local" && <span className="preview-tag local-tag"><i></i>本地开发模式 · 非生产数据</span>}
+            <ThemeSwitcher />
           </div>
         </header>
         <main>{children}</main>

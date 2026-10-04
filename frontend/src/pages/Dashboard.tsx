@@ -8,7 +8,8 @@ import { useFamily } from "../components/Layout";
 import { currentMonth, money, monthLabel, shiftMonth, shortDate } from "../lib/format";
 import { ENTRY_TYPES, METHODS, METHOD_LABEL, TYPE_LABEL } from "../lib/labels";
 
-const PIE_COLORS = ["#7c9566", "#bcb59a", "#d09b79", "#b7c7ae", "#9bafac", "#d9d8bd", "#8fa58a", "#c9a98a", "#a7b49b"];
+// 饼图配色随界面风格变化（theme.css 中的 --c1…--c9）
+const PIE_COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)", "var(--c7)", "var(--c8)", "var(--c9)"];
 
 export default function Dashboard() {
   const fam = useFamily();

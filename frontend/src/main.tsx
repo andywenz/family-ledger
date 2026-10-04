@@ -16,8 +16,13 @@ import NewEntry from "./pages/NewEntry";
 import { NotYet } from "./pages/Placeholder";
 import Rates from "./pages/Rates";
 import Trash from "./pages/Trash";
+import "@fontsource-variable/nunito"; // 随站点打包，不从第三方加载字体
 import "./styles/prototype.css";
 import "./styles/app.css";
+import "./styles/theme.css";
+import { applyTheme, getTheme } from "./lib/theme";
+
+applyTheme(getTheme()); // 渲染前应用，避免闪现旧风格
 
 function App() {
   return (
