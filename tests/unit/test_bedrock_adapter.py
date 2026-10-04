@@ -188,3 +188,17 @@ def test_tool_schema_matches_contract() -> None:
         "evidence",
         "inferred",
     ]
+
+
+def test_invokes_through_inference_profile_but_prices_by_model() -> None:
+    """经应用推理配置文件调用（费用带项目标签），用量记录与计价仍用基础模型 ID。"""
+    client = boto3.client(
+        "bedrock-runtime",
+        region_name="ap-southeast-2",
+        aws_access_key_id="x",
+        aws_secret_access_key="x",
+    )  # noqa: S106
+    arn = "arn:aws:bedrock:ap-southeast-2:111111111111:application-inference-profile/abc123"
+    model = BedrockModel(client, "amazon.nova-pro-v1:0", invoke_id=arn)
+    assert model.build_request(REQ)["modelId"] == arn
+    assert model.model_id == "amazon.nova-pro-v1:0"

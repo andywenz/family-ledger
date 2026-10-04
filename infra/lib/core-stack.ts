@@ -15,6 +15,7 @@ import { AccountRecovery, UserPool, UserPoolClient } from "aws-cdk-lib/aws-cogni
 import { AttributeType, Billing, StreamViewType, TableV2 } from "aws-cdk-lib/aws-dynamodb";
 import { Rule, RuleTargetInput, Schedule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
+import { CfnApplicationInferenceProfile } from "aws-cdk-lib/aws-bedrock";
 import { Effect, PolicyStatement, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Architecture, Code, Function as Fn, Runtime, StartingPosition } from "aws-cdk-lib/aws-lambda";
 import { DynamoEventSource, SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
@@ -102,6 +103,15 @@ export class CoreStack extends Stack {
     });
 
     // ── 秘密（值由人工在控制台写入，不进入代码或 CI 输出） ──
+    // Bedrock 应用推理配置文件：同一个基础模型，但调用费用带 Project 标签（按需调用本身无法打标签），
+    // 从而进入按标签的成本统计与预算（2026-10-05）。配置文件本身不收费。
+    const foundationModelArn = `arn:aws:bedrock:${cfg.modelRegion}::foundation-model/${cfg.modelId}`;
+    const recognitionProfile = new CfnApplicationInferenceProfile(this, "RecognitionProfile", {
+      inferenceProfileName: `family-ledger-${cfg.envName}-recognition`,
+      description: "小家账本识别（Nova Pro），用于按项目标签统计费用",
+      modelSource: { copyFrom: foundationModelArn },
+    });
+
     // 秘密存于 SSM Parameter Store 的 SecureString（标准层免费；AWS 托管密钥 aws/ssm 加密）。
     // CloudFormation 不能创建 SecureString，由运维命令写入（docs/部署.md）；代码只接受 SecureString。
     const paramPrefix = `/family-ledger/${cfg.envName}`;
@@ -135,7 +145,8 @@ export class CoreStack extends Stack {
       LEDGER_BLOB_BUCKET: photos.bucketName,
       LEDGER_EXPORT_BUCKET: exportsBucket.bucketName,
       LEDGER_ALLOWED_ORIGINS: siteOrigin,
-      LEDGER_MODEL: cfg.modelId,
+      LEDGER_MODEL: cfg.modelId, // 计价与用量记录用的基础模型 ID
+      LEDGER_MODEL_INVOKE_ID: recognitionProfile.attrInferenceProfileArn, // 实际调用：带项目标签的推理配置文件
       LEDGER_RECOGNITION_QUEUE_URL: queue.queueUrl,
       LEDGER_VERSION: manifest.commit.slice(0, 12),
       LEDGER_COMMIT: manifest.commit,
@@ -181,11 +192,11 @@ export class CoreStack extends Stack {
         "cognito-idp:AdminDisableUser", "cognito-idp:AdminEnableUser", "cognito-idp:AdminGetUser"],
       resources: [pool.userPoolArn],
     }));
-    // Bedrock 只给识别 Worker，并限定模型
+    // Bedrock 只给识别 Worker：经推理配置文件调用，需同时授权配置文件与其背后的基础模型
     worker.addToRolePolicy(new PolicyStatement({
       effect: Effect.ALLOW,
       actions: ["bedrock:InvokeModel"],
-      resources: [`arn:aws:bedrock:${cfg.modelRegion}::foundation-model/${cfg.modelId}`],
+      resources: [recognitionProfile.attrInferenceProfileArn, foundationModelArn],
     }));
 
     worker.addEventSource(new SqsEventSource(queue, { batchSize: 1, reportBatchItemFailures: true }));

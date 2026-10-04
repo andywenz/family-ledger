@@ -98,6 +98,7 @@ test("首发初始化所需输出存在；Worker 只能调用选定模型（ADR-
   t.hasOutput("UserPoolId", {});
   const policies = JSON.stringify(t.findResources("AWS::IAM::Policy"));
   if (!policies.includes("foundation-model/amazon.nova-pro-v1:0")) throw new Error("Worker 未限定 Nova Pro ARN");
+  if (!policies.includes("RecognitionProfile")) throw new Error("Worker 未授权推理配置文件");
   if (policies.includes("nova-lite")) throw new Error("仍引用 Lite");
 });
 
@@ -141,4 +142,14 @@ test("秘密：不再使用 Secrets Manager；函数只能读两个 SSM 参数",
   if (!policies.includes("parameter/family-ledger/prod/session-secret")) throw new Error("缺少会话密钥参数读取权限");
   if (!policies.includes("parameter/family-ledger/prod/feishu")) throw new Error("缺少飞书参数读取权限");
   if (policies.includes("ssm:PutParameter") || policies.includes("parameter/*")) throw new Error("SSM 权限过宽");
+});
+
+test("AI 费用带项目标签：识别经应用推理配置文件调用", () => {
+  t.hasResourceProperties("AWS::Bedrock::ApplicationInferenceProfile", {
+    ModelSource: { CopyFrom: "arn:aws:bedrock:ap-southeast-2::foundation-model/amazon.nova-pro-v1:0" },
+    Tags: Match.arrayWith([{ Key: "Project", Value: "family-ledger" }]),
+  });
+  t.hasResourceProperties("AWS::Lambda::Function", {
+    Environment: { Variables: Match.objectLike({ LEDGER_MODEL: "amazon.nova-pro-v1:0", LEDGER_MODEL_INVOKE_ID: Match.anyValue() }) },
+  });
 });

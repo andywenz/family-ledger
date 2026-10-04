@@ -75,9 +75,12 @@ def client_config(timeout_s: float) -> Config:
 
 
 class BedrockModel:
-    def __init__(self, client: Any, model_id: str, *, structured: bool = True) -> None:
+    def __init__(
+        self, client: Any, model_id: str, *, structured: bool = True, invoke_id: str | None = None
+    ) -> None:
         self.client = client
-        self.model_id = model_id
+        self.model_id = model_id  # 基础模型 ID：计价、用量记录
+        self.invoke_id = invoke_id or model_id  # 实际调用 ID：可为带标签的应用推理配置文件 ARN
         self.structured = structured  # True：工具调用＋约束解码（默认，见 ADR-0015）
 
     def build_request(self, request: ModelRequest) -> dict[str, Any]:
@@ -92,7 +95,7 @@ class BedrockModel:
                 }
             )
         body: dict[str, Any] = {
-            "modelId": self.model_id,
+            "modelId": self.invoke_id,
             "system": [{"text": system_prompt(self.structured)}],
             "messages": [{"role": "user", "content": content}],
             "inferenceConfig": {"maxTokens": MAX_OUTPUT_TOKENS, "temperature": 0},

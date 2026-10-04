@@ -166,4 +166,7 @@ def build_model(s: Settings) -> Any:
     from ledger.ai.bedrock import BedrockModel, client_config
 
     client = boto3.client("bedrock-runtime", region_name=s.region, config=client_config(45))
-    return BedrockModel(client, model_id)
+    # 经带项目标签的应用推理配置文件调用（费用可按标签统计）；用量仍按基础模型计价
+    return BedrockModel(
+        client, model_id, invoke_id=os.environ.get("LEDGER_MODEL_INVOKE_ID") or None
+    )
