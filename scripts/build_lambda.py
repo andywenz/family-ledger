@@ -33,6 +33,18 @@ PLATFORM = "aarch64-manylinux_2_28"
 FIXED_TIME = (2020, 1, 1, 0, 0, 0)
 
 
+# 制品只取决于这些路径；“未提交修改”只在这些路径上判断（其他文件如本地文档不影响制品）
+ARTIFACT_INPUTS = (
+    "backend/src",
+    "contracts",
+    "seed",
+    "config/model-prices.json",
+    "pyproject.toml",
+    "uv.lock",
+    "scripts/build_lambda.py",
+)
+
+
 def _packaged(rel: Path) -> bool:
     """排除与构建路径相关、运行时不需要的文件，保证不同目录构建出相同摘要。
 
@@ -133,7 +145,7 @@ def main() -> None:
     ap.add_argument("--no-deps", action="store_true")
     a = ap.parse_args()
     out = build(not a.no_deps)
-    dirty = bool(git("status", "--porcelain"))
+    dirty = bool(git("status", "--porcelain", "--", *ARTIFACT_INPUTS))
     manifest = {
         "artifact": out.name,
         "sha256": sha256(out),

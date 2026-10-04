@@ -81,3 +81,12 @@ def test_compiled_contract_matches_yaml(tmp_path: Path) -> None:
     first = out.read_bytes()
     compile_contract(src, out)
     assert out.read_bytes() == first  # 确定性：同一 YAML 生成相同字节
+
+
+def test_dirty_check_covers_all_packaged_inputs() -> None:
+    """未提交修改只按影响制品的路径判断；打包读取的每个资源都必须在其中。"""
+    from build_lambda import ARTIFACT_INPUTS, RESOURCES
+
+    for rel in RESOURCES:
+        assert any(rel == p or rel.startswith(p + "/") for p in ARTIFACT_INPUTS), rel
+    assert "backend/src" in ARTIFACT_INPUTS and "uv.lock" in ARTIFACT_INPUTS
