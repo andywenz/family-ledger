@@ -2,20 +2,20 @@
 
 本文件在真实首发时逐项填写。状态只能用：**未实现／已实现待验证／离线通过／真实通过／受阻**。没有证据的项不勾选；不记录任何密码、令牌、密钥或私人身份信息。
 
-当前状态（2026-10-04）：**未发布**。离线可运行系统已完成；真实部署、飞书联调与恢复演练尚未授权。
+当前状态（2026-10-04）：**已部署到生产环境，尚未完成首发**。基础设施、后端与前端已部署并读回版本；回滚演练完成。生产初始化、账号交付、自定义域名、飞书联调、预算通知与 PITR 恢复演练待完成。账户 ID、域名等环境信息只记在私人发布记录中，不进入本仓库。
 
 ## 1. 版本绑定（OPS-08）
 
 | 项 | 值 |
 |---|---|
-| 发布提交 | `<commit>` |
-| CI 运行 | `<run id>` |
-| artifact sha256（manifest） | `<sha256>` |
-| `verify_artifact.py --expect-commit` | `<通过／失败>` |
-| CloudFormation 输出 `ArtifactDigest` | `<sha256>` |
-| `GET /v1/health` 读回 commit／artifact_digest | `<值>`（必须与上两行一致） |
-| 前端 `frontend/dist` 同步时间 | `<时间>` |
-| 部署人／时间 | `<角色>`／`<时间>` |
+| 发布提交 | `52e0a11`（2026-10-04） |
+| CI 运行 | 首次部署由本机执行（GitHub 仓库建立前）；之后经 CI |
+| artifact sha256（manifest） | `19c86739564c6dbe53a580660d2a40f844b94a85b68da48ff4a67c3b1017ce42` |
+| `verify_artifact.py --expect-commit` | 通过 |
+| CloudFormation 输出 `ArtifactDigest` | 与 manifest 一致 |
+| `GET /v1/health` 读回 commit／artifact_digest | `52e0a119a643…`／`19c86739…`，与上两行一致 |
+| 前端 `frontend/dist` 同步时间 | 2026-10-04（首页 200，HSTS／nosniff／SAMEORIGIN 头已读回） |
+| 部署人／时间 | 账户管理员（本机 CDK）／2026-10-04 |
 
 ## 2. 发布完成条件（验收 §8）
 
@@ -23,14 +23,14 @@
 |---|---|---|---|
 | 核心账目、隔离、确认、重复恢复、分类／汇率、删除规则离线测试通过 | ACC-*、AUTH-07/08、OPS-01/02/03 | 离线通过 | `./scripts/check.sh` 输出与提交号 |
 | 身份：Cognito 首登改密、改名、重置使会话失效 | AUTH-01/02/03 | 已实现待验证 | |
-| Bedrock：生产 Worker 用 Nova Pro 完成一次文字、一次照片识别并人工确认入账 | AI-01/03/07、QUAL-01/02 | 模型比较真实通过；全链路待部署 | `verification/model-eval/报告-2026-10-04.md`；生产 Job ID |
+| Bedrock：生产 Worker 用 Nova Pro 完成一次文字、一次照片识别并人工确认入账 | AI-01/03/07、QUAL-01/02 | 模型比较真实通过；生产全链路待首发后验证 | `verification/model-eval/报告-2026-10-04.md`；生产 Job ID |
 | 飞书：绑定、私聊文字／照片、卡片内编辑确认、重复事件只入一次、3 秒内回调 | FS-01…FS-07 | 已实现待验证 | |
 | 照片：S3 表单上传、格式校验、签名查看与过期 | OPS-04、AUTH-09 | 已实现待验证 | |
 | DNS／TLS：Cloudflare CNAME、ACM 证书、HTTPS 访问与 HSTS | — | 未实现（待部署） | |
 | 费用告警：AWS Budgets 测试通知到达；应用估算与未知 usage 在费用页可见 | OPS-05/06 | 已实现待验证 | |
 | 隔离备份恢复：PITR 恢复到新表并抽样核对，不覆盖生产 | OPS-10 | 未实现（待演练） | |
-| 回滚：部署上一 artifact 并读回 | OPS-09 | 未实现（待演练） | |
-| artifact 与生产版本绑定 | OPS-08 | 已实现待验证 | 第 1 节 |
+| 回滚：部署上一 artifact 并读回 | OPS-09 | 真实通过 | 2026-10-04：475e10e → 5df34f6（34 s，health 读回 5df34f6）→ 475e10e（30 s，读回）；演练发现同一提交在不同目录构建摘要不同，已修复（52e0a11）并验证两目录摘要一致 |
+| artifact 与生产版本绑定 | OPS-08 | 真实通过 | 第 1 节 |
 
 ## 3. 空账本初始化（OPS-12）
 
