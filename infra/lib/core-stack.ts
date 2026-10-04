@@ -108,7 +108,7 @@ export class CoreStack extends Stack {
     const foundationModelArn = `arn:aws:bedrock:${cfg.modelRegion}::foundation-model/${cfg.modelId}`;
     const recognitionProfile = new CfnApplicationInferenceProfile(this, "RecognitionProfile", {
       inferenceProfileName: `family-ledger-${cfg.envName}-recognition`,
-      description: "小家账本识别（Nova Pro），用于按项目标签统计费用",
+      description: "family-ledger recognition via Nova Pro for cost allocation", // 只允许字母数字与少量符号
       modelSource: { copyFrom: foundationModelArn },
     });
 

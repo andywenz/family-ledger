@@ -147,6 +147,7 @@ test("秘密：不再使用 Secrets Manager；函数只能读两个 SSM 参数",
 test("AI 费用带项目标签：识别经应用推理配置文件调用", () => {
   t.hasResourceProperties("AWS::Bedrock::ApplicationInferenceProfile", {
     ModelSource: { CopyFrom: "arn:aws:bedrock:ap-southeast-2::foundation-model/amazon.nova-pro-v1:0" },
+    Description: Match.stringLikeRegexp("^([0-9a-zA-Z:.][ _-]?)+$"), // CloudFormation 早期校验的格式
     Tags: Match.arrayWith([{ Key: "Project", Value: "family-ledger" }]),
   });
   t.hasResourceProperties("AWS::Lambda::Function", {
