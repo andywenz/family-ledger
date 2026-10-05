@@ -45,3 +45,20 @@ export function minorToDecimal(minor: number): string {
   const abs = Math.abs(Math.trunc(minor));
   return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
 }
+
+// 币种符号（同为“$”的币种加前缀区分）；未列出的币种退回代码
+const SYMBOLS: Record<string, string> = {
+  AUD: "A$", CAD: "C$", CNY: "¥", EUR: "€", GBP: "£", HKD: "HK$", JPY: "JP¥",
+  KRW: "₩", MOP: "MOP$", NZD: "NZ$", SGD: "S$", USD: "US$",
+};
+
+export function currencySymbol(code: string): string {
+  return SYMBOLS[code] ?? code + " ";
+}
+
+/** 带符号的金额，如 NZ$1,234.50、−¥80.00 */
+export function cash(code: string, value: string | null | undefined): string {
+  const m = money(value);
+  if (m === "—") return m;
+  return m.startsWith("−") ? "−" + currencySymbol(code) + m.slice(1) : currencySymbol(code) + m;
+}

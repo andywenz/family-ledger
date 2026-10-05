@@ -215,12 +215,18 @@ def dashboard(
     f = _parse_filters(filters)
     rows, version = _consistent_month(ctx, fid, month)
     out = dash.compute(rows, env.catalog, f)
-    target = secondary.configured(repo.family_config(ctx, fid))
+    cfg = repo.family_config(ctx, fid)
+    matched = [e for e in rows if e.state == "active" and dash.matches(e, f, env.catalog)]
+    # 主币种＝家庭默认币种（净支出、饼图、消费方式）；辅助币种可选（小字）
+    main = secondary.primary(cfg)
+    prim = secondary.summary_block(
+        secondary.CurrencyConverter(ctx, fid, main, matched), matched, env.catalog
+    )
+    target = secondary.configured(cfg)
     sec = None
     if target:
-        matched = [e for e in rows if dash.matches(e, f, env.catalog)]
-        sec = secondary.dashboard_block(
-            secondary.SecondaryConverter(ctx, fid, target, matched), matched
+        sec = secondary.summary_block(
+            secondary.CurrencyConverter(ctx, fid, target, matched), matched
         )
     return {
         "family_id": fid,
@@ -229,6 +235,7 @@ def dashboard(
         "data_version": version,
         "computed_at": keys.ts(env.now),
         **out,
+        "primary": prim,
         "secondary": sec,
     }
 
@@ -272,9 +279,14 @@ def list_entries(
         offset = int(c.get("o", 0))
     matched = [e for e in rows if dash.matches(e, f, env.catalog)]
     page = matched[offset : offset + page_size]
-    target = secondary.configured(repo.family_config(ctx, fid))
-    conv = secondary.SecondaryConverter(ctx, fid, target, page) if target else None
-    items = [env.view(e) | {"secondary": conv.amount(e) if conv else None} for e in page]
+    cfg = repo.family_config(ctx, fid)
+    pconv = secondary.CurrencyConverter(ctx, fid, secondary.primary(cfg), page)
+    target = secondary.configured(cfg)
+    sconv = secondary.CurrencyConverter(ctx, fid, target, page) if target else None
+    items = [
+        env.view(e) | {"primary": pconv.amount(e), "secondary": sconv.amount(e) if sconv else None}
+        for e in page
+    ]
     out: dict[str, Any] = {"items": items, "data_version": version}
     if offset + page_size < len(matched):
         out["next_cursor"] = _encode_cursor({"s": sig, "v": version, "o": offset + page_size})

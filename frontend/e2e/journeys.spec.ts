@@ -270,6 +270,20 @@ test("辅助币种：不显示时隐藏“合 xxx”，选 AUD 后按澳元显�
   await page.getByRole("link", { name: "月度总览" }).first().click();
   await expect(page.getByText(/合 AUD/).first()).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "合 AUD" })).toBeVisible();
+  const hero = page.locator(".spending-hero");
+  await expect(hero).toContainText("新西兰元（NZD）");
+  await expect(hero).toContainText("NZ$");
+  await expect(hero).toContainText(/合澳大利亚元（AUD） A\$/);
+  // 主币种 ＝ 默认币种：改为人民币后，第一个“合 xxx”与净支出都按人民币显示
   await openFamilyPage(page, `家-${project}`, "家庭与设置");
+  await page.getByLabel("默认币种").selectOption("CNY");
+  await page.getByRole("button", { name: "保存设置" }).click();
+  await expect(page.getByText("设置已保存")).toBeVisible();
+  await page.getByRole("link", { name: "月度总览" }).first().click();
+  await expect(page.getByRole("columnheader").filter({ hasText: /^合 / }).first()).toHaveText("合 CNY");
+  await expect(hero).toContainText("人民币（CNY）");
+  await expect(hero).toContainText("¥");
+  await openFamilyPage(page, `家-${project}`, "家庭与设置");
+  await page.getByLabel("默认币种").selectOption("NZD");
   await pick("人民币（CNY）"); // 恢复默认，避免影响其他用例
 });

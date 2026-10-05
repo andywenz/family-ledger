@@ -5,7 +5,7 @@ import { EntryDialog } from "../components/EntryDialog";
 import { ErrorNotice, PageHeading, useLoad, useToast } from "../components/common";
 import { Icon } from "../components/Icon";
 import { useFamily } from "../components/Layout";
-import { currentMonth, money, monthLabel, shiftMonth, shortDate } from "../lib/format";
+import { cash, currencySymbol, currentMonth, money, monthLabel, shiftMonth, shortDate } from "../lib/format";
 import { ENTRY_TYPES, METHODS, METHOD_LABEL, TYPE_LABEL } from "../lib/labels";
 
 // 饼图配色随界面风格变化（theme.css 中的 --c1…--c9）
@@ -62,9 +62,11 @@ export default function Dashboard() {
   }
 
   const s = data?.summary;
-  // 辅助币种（家庭设置，可选）：未设置时不显示“合 xxx”
+  // 主币种 ＝ 家庭默认币种；辅助币种（家庭设置，可选）未设置时不显示
+  const prim = s?.primary;
   const sec = s?.secondary ?? null;
-  const pie = s?.category_pie;
+  const pie = prim?.category_pie;
+  const currencyName = (code: string) => fam.currencies.find((c) => c.code === code)?.name_zh ?? code;
   let at = 0;
   const gradient = pie?.slices.map((sl, i) => {
     const start = at;
@@ -96,20 +98,22 @@ export default function Dashboard() {
           <section className="dashboard-top" aria-label="本月概览">
             <article className="card spending-hero">
               <div className="card-label">本月净支出 <Icon name="wallet" /></div>
-              <div className="number"><small>$</small>{money(s.totals.net_expense.nzd)}</div>
+              <div className="currency-kicker">{currencyName(prim!.currency)}（{prim!.currency}）</div>
+              <div className="number"><small>{currencySymbol(prim!.currency)}</small>{money(prim!.net_expense)}</div>
+              {prim!.missing_count > 0 && <div className="secondary-amount"><small>{prim!.missing_count} 笔缺少汇率，未计入</small></div>}
               {sec && (
                 <div className="secondary-amount">
-                  合 {sec.currency} {money(sec.net_expense)}
+                  合{currencyName(sec.currency)}（{sec.currency}） {cash(sec.currency, sec.net_expense)}
                   {sec.missing_count > 0 && <small>（{sec.missing_count} 笔缺少汇率，未计入）</small>}
                 </div>
               )}
-              <div className="card-footnote"><span className="dot"></span>消费 ${money(s.totals.expense_gross.nzd)} · 退款 ${money(s.totals.refund.nzd)}</div>
+              <div className="card-footnote"><span className="dot"></span>消费 {cash(prim!.currency, prim!.expense_gross)} · 退款 {cash(prim!.currency, prim!.refund)}</div>
             </article>
             <article className="card">
-              <div className="section-head"><h2>钱花在了哪里</h2><small>一级分类 · 合 NZD</small></div>
+              <div className="section-head"><h2>钱花在了哪里</h2><small>一级分类 · 合 {prim!.currency}</small></div>
               <div className="chart-body">
                 <div className="donut" role="img" aria-label="各分类净支出占比" style={{ background: gradient ? `conic-gradient(${gradient})` : "#ecf0e5" }}>
-                  <div className="donut-center">正净支出合计<strong>${money(pie!.denominator)}</strong>{pie!.slices.length} 个分类</div>
+                  <div className="donut-center">正净支出合计<strong>{cash(prim!.currency, pie!.denominator)}</strong>{pie!.slices.length} 个分类</div>
                 </div>
                 <div className="legend">
                   {pie!.empty && <p className="muted">这个月没有正净支出的分类。</p>}
@@ -122,7 +126,7 @@ export default function Dashboard() {
                   {pie!.negatives.length > 0 && (
                     <div className="negatives">
                       <small>净额为负（退款多于消费），不计入饼图：</small>
-                      {pie!.negatives.map((n) => <div key={n.category_id} className="legend-row"><span>{n.name}</span><b>${money(n.net)}</b></div>)}
+                      {pie!.negatives.map((n) => <div key={n.category_id} className="legend-row"><span>{n.name}</span><b>{cash(prim!.currency, n.net)}</b></div>)}
                     </div>
                   )}
                   {!pie!.empty && <p className="tiny-note">饼图分母为所有正净支出分类之和，可能不同于净支出总额。</p>}
@@ -131,11 +135,11 @@ export default function Dashboard() {
             </article>
             <article className="card">
               <div className="section-head"><h2>消费方式</h2><small>扣除对应退款 · 不含收入</small></div>
-              {s.by_payment_method.map((m) => (
+              {prim!.by_payment_method.map((m) => (
                 <div key={m.payment_method} className="payment-row">
                   <div className="payment-icon"><Icon name={m.payment_method === "cash" ? "cash" : m.payment_method === "credit_card" ? "card" : "wallet"} /></div>
                   <div className="payment-label">{METHOD_LABEL[m.payment_method]}<small>{m.expense_count} 笔消费 · {m.refund_count} 笔退款</small></div>
-                  <div className="payment-amount"><strong>NZD ${money(m.net.nzd)}</strong>{sec && <small>{sec.currency} {money(sec.by_payment_method.find((x) => x.payment_method === m.payment_method)?.net ?? "0")}</small>}</div>
+                  <div className="payment-amount"><strong>{cash(prim!.currency, m.net)}</strong>{sec && <small>{cash(sec.currency, sec.by_payment_method.find((x) => x.payment_method === m.payment_method)?.net ?? "0")}</small>}</div>
                 </div>
               ))}
             </article>
@@ -183,7 +187,7 @@ export default function Dashboard() {
                 <thead>
                   <tr>
                     <th>日期</th><th>类型</th><th>一级分类</th><th>二级分类</th><th>币种</th>
-                    <th className="numeric">原始金额</th><th className="numeric">合 NZD</th>{sec && <th className="numeric">合 {sec.currency}</th>}
+                    <th className="numeric">原始金额</th><th className="numeric">合 {prim!.currency}</th>{sec && <th className="numeric">合 {sec.currency}</th>}
                     <th>备注</th><th>方式</th><th>录入人</th><th>操作</th>
                   </tr>
                 </thead>
@@ -196,7 +200,7 @@ export default function Dashboard() {
                       <td>{e.category.leaf_name}</td>
                       <td>{e.currency}</td>
                       <td className="numeric">{money(e.amount)}</td>
-                      <td className="numeric">{money(e.display_amounts.nzd)}</td>
+                      <td className="numeric">{e.primary ? money(e.primary.amount) : "—"}</td>
                       {sec && <td className="numeric">{e.secondary ? money(e.secondary.amount) : "—"}</td>}
                       <td className="note-cell">{e.note}{e.attachments.length > 0 && <span title="有照片"> 📎</span>}</td>
                       <td>{e.payment_method ? METHOD_LABEL[e.payment_method] : "—"}</td>

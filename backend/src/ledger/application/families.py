@@ -303,10 +303,12 @@ def update_config(
         ):
             raise ValidationFailed("默认币种必须是本家庭已启用币种")
         if set_secondary and secondary_currency is not None:
-            if secondary_currency == "NZD":
-                raise ValidationFailed("辅助币种不能是主币种 NZD")
             if ctx.store.get(keys.family(fid), keys.family_currency(secondary_currency)) is None:
                 raise ValidationFailed("辅助币种必须是本家庭已启用币种")
+        # 只拒绝“明确把辅助币种设成与默认币种相同”；仅改默认币种时，二者相同则辅助币种暂不显示
+        final_default = default_currency or cfg["default_currency"]
+        if set_secondary and secondary_currency and secondary_currency == final_default:
+            raise ValidationFailed("辅助币种不能与默认币种相同")
         new = {**cfg, "version": expected_version + 1}
         if set_secondary:
             new["secondary_currency"] = secondary_currency or ""  # 空字符串＝不显示

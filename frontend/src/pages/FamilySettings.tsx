@@ -76,12 +76,12 @@ export default function FamilySettings() {
         <section className="card">
           <div className="section-head"><h2>记账默认值</h2><small>AI 使用时会标注</small></div>
           <div className="field-grid">
-            <label className="field">默认币种<select value={cur} disabled={!isAdmin} onChange={(e) => setCur(e.target.value)}>{fam.currencies.map((c) => <option key={c.code}>{c.code}</option>)}</select></label>
+            <label className="field">默认币种<select value={cur} disabled={!isAdmin} onChange={(e) => { setCur(e.target.value); if (secondary === e.target.value) setSecondary(""); }}>{fam.currencies.map((c) => <option key={c.code}>{c.code}</option>)}</select></label>
             <label className="field">默认消费方式<select value={method} disabled={!isAdmin} onChange={(e) => setMethod(e.target.value as typeof method)}>{METHODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
             <label className="field">辅助币种（可选）
               <select value={secondary} disabled={!isAdmin} onChange={(e) => setSecondary(e.target.value)}>
                 <option value="">不显示</option>
-                {fam.currencies.filter((c) => c.code !== "NZD").map((c) => <option key={c.code} value={c.code}>{c.name_zh}（{c.code}）</option>)}
+                {fam.currencies.filter((c) => c.code !== cur).map((c) => <option key={c.code} value={c.code}>{c.name_zh}（{c.code}）</option>)}
               </select>
             </label>
           </div>

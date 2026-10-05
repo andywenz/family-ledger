@@ -82,3 +82,50 @@ def test_missing_rate_is_counted_not_zero(world: World) -> None:
     sec = entries.dashboard(w.ctx, w.admin, w.fid, MONTH)["secondary"]
     assert (sec["net_expense"], sec["missing_count"]) == ("0.00", 1)
     assert entries.list_entries(w.ctx, w.admin, w.fid, MONTH)["items"][0]["secondary"] is None
+
+
+def _cfg(w: World, **kw: object) -> dict:
+    cfg = families.get_config(w.ctx, w.admin, w.fid)
+    return families.update_config(
+        w.ctx, w.admin, w.fid, new_key(), expected_version=cfg["version"], **kw
+    )
+
+
+def test_primary_follows_default_currency(world: World) -> None:
+    """主币种＝默认币种：净支出、消费方式、饼图、明细第一个“合 xxx”均按当日汇率折算。"""
+    w = world
+    expense(w, amount="100", method="credit_card")  # NZD 100 → AUD 86.15
+    expense(w, amount="10", method="cash", leaf="expense-03-01")  # → AUD 8.62
+    _cfg(w, default_currency="AUD", secondary_currency="NZD")
+    d = entries.dashboard(w.ctx, w.admin, w.fid, MONTH)
+    p, s = d["primary"], d["secondary"]
+    assert (p["currency"], p["net_expense"], p["expense_gross"], p["refund"]) == (
+        "AUD",
+        "94.77",
+        "94.77",
+        "0.00",
+    )
+    assert {m["payment_method"]: m["net"] for m in p["by_payment_method"]}["credit_card"] == "86.15"
+    pie = p["category_pie"]
+    assert pie["currency"] == "AUD" and pie["denominator"] == "94.77"
+    assert [sl["net"] for sl in pie["slices"]] == ["86.15", "8.62"]
+    # 辅助币种 NZD：直接用入账快照的合 NZD
+    assert (s["currency"], s["net_expense"]) == ("NZD", "110.00")
+    item = next(
+        i
+        for i in entries.list_entries(w.ctx, w.admin, w.fid, MONTH)["items"]
+        if i["amount"] == "100.00"
+    )
+    assert item["primary"] == {"currency": "AUD", "amount": "86.15"}
+    assert item["secondary"] == {"currency": "NZD", "amount": "100.00"}
+
+
+def test_secondary_hidden_when_same_as_default(world: World) -> None:
+    """只改默认币种为 CNY（辅助币种仍是旧默认 CNY）：允许，辅助币种暂不显示；明确设成相同则拒绝。"""
+    w = world
+    expense(w)
+    _cfg(w, default_currency="CNY")
+    d = entries.dashboard(w.ctx, w.admin, w.fid, MONTH)
+    assert d["primary"]["currency"] == "CNY" and d["secondary"] is None
+    with pytest.raises(ValidationFailed):
+        _cfg(w, secondary_currency="CNY")

@@ -712,7 +712,7 @@ paths:
                 default_payment_method: { $ref: "#/components/schemas/PaymentMethod" }
                 timezone: { type: string, maxLength: 64 }
                 secondary_currency:
-                  description: 辅助显示币种；null 表示不显示；须为本家庭已启用且不是 NZD
+                  description: 辅助显示币种；null 表示不显示；须为本家庭已启用且不同于默认币种
                   type: [string, "null"]
                   pattern: "^[A-Z]{3}$"
                 expected_version: { $ref: "#/components/schemas/Version" }
@@ -2294,6 +2294,57 @@ components:
     EntrySource:
       type: string
       enum: [manual, web_ai, feishu, import]
+    DisplaySummary:
+      type: object
+      description: 按某一显示币种折算后的月度汇总；missing_count 为缺汇率未计入的笔数
+      required: [currency, net_expense, net_expense_minor, expense_gross, refund, by_payment_method, missing_count]
+      properties:
+        currency: { $ref: "#/components/schemas/CurrencyCode" }
+        net_expense: { $ref: "#/components/schemas/Decimal" }
+        net_expense_minor: { type: integer }
+        expense_gross: { $ref: "#/components/schemas/Decimal" }
+        refund: { $ref: "#/components/schemas/Decimal" }
+        missing_count: { type: integer }
+        by_payment_method:
+          type: array
+          items:
+            type: object
+            required: [payment_method, net, net_minor, expense_count, refund_count]
+            properties:
+              payment_method: { $ref: "#/components/schemas/PaymentMethod" }
+              net: { $ref: "#/components/schemas/Decimal" }
+              net_minor: { type: integer }
+              expense_count: { type: integer }
+              refund_count: { type: integer }
+        category_pie:
+          type: object
+          required: [currency, denominator_minor, denominator, slices, negatives, empty]
+          properties:
+            currency: { $ref: "#/components/schemas/CurrencyCode" }
+            denominator_minor: { type: integer }
+            denominator: { $ref: "#/components/schemas/Decimal" }
+            slices:
+              type: array
+              items:
+                type: object
+                required: [category_id, name, net_minor, net, share_percent]
+                properties:
+                  category_id: { $ref: "#/components/schemas/Id" }
+                  name: { type: string }
+                  net_minor: { type: integer }
+                  net: { $ref: "#/components/schemas/Decimal" }
+                  share_percent: { $ref: "#/components/schemas/Decimal" }
+            negatives:
+              type: array
+              items:
+                type: object
+                required: [category_id, name, net_minor, net]
+                properties:
+                  category_id: { $ref: "#/components/schemas/Id" }
+                  name: { type: string }
+                  net_minor: { type: integer }
+                  net: { $ref: "#/components/schemas/Decimal" }
+            empty: { type: boolean }
     MoneyPair:
       type: object
       required: [nzd, cny, nzd_minor, cny_minor]
@@ -2486,7 +2537,7 @@ components:
         category_manifest_version: { type: integer }
         version: { $ref: "#/components/schemas/Version" }
         secondary_currency:
-          description: 月度总览的辅助显示币种；null 表示不显示（主币种固定为 NZD）
+          description: 月度总览的辅助显示币种；null 表示不显示（主显示币种为默认币种）
           type: [string, "null"]
           pattern: "^[A-Z]{3}$"
     Member:
@@ -2676,6 +2727,15 @@ components:
         cny_minor: { type: integer }
         display_amounts: { $ref: "#/components/schemas/DisplayAmounts" }
         counts_in_stats: { type: boolean, description: false 表示“不计收支” }
+        primary:
+          description: 明细列表中按家庭默认币种（主币种）折算的金额；缺汇率时为 null（仅列表接口返回）
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [currency, amount]
+              properties:
+                currency: { $ref: "#/components/schemas/CurrencyCode" }
+                amount: { $ref: "#/components/schemas/Decimal" }
         secondary:
           description: 明细列表中按家庭辅助币种折算的金额；未设置辅助币种或缺汇率时为 null（仅列表接口返回）
           oneOf:
@@ -2764,26 +2824,14 @@ components:
               net: { $ref: "#/components/schemas/MoneyPair" }
               expense_count: { type: integer }
               refund_count: { type: integer }
+        primary:
+          description: 主币种（家庭默认币种）汇总：净支出、消费与退款、消费方式、一级分类饼图
+          $ref: "#/components/schemas/DisplaySummary"
         secondary:
-          description: 辅助币种合计（家庭未设置辅助币种时为 null）；missing_count 为缺汇率未计入的笔数
+          description: 辅助币种汇总（不含饼图）；家庭未设置辅助币种时为 null
           oneOf:
             - type: "null"
-            - type: object
-              required: [currency, net_expense, net_expense_minor, by_payment_method, missing_count]
-              properties:
-                currency: { $ref: "#/components/schemas/CurrencyCode" }
-                net_expense: { $ref: "#/components/schemas/Decimal" }
-                net_expense_minor: { type: integer }
-                missing_count: { type: integer }
-                by_payment_method:
-                  type: array
-                  items:
-                    type: object
-                    required: [payment_method, net, net_minor]
-                    properties:
-                      payment_method: { $ref: "#/components/schemas/PaymentMethod" }
-                      net: { $ref: "#/components/schemas/Decimal" }
-                      net_minor: { type: integer }
+            - $ref: "#/components/schemas/DisplaySummary"
         category_pie:
           type: object
           required: [currency, denominator_minor, denominator, slices, negatives, empty]
