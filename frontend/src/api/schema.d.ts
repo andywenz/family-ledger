@@ -1809,8 +1809,10 @@ export interface components {
                 as_of: components["schemas"]["Timestamp"];
                 /** @enum {string} */
                 tag_coverage: "complete" | "partial" | "unknown";
-                /** @description AWS 账单原币（USD）金额 */
+                /** @description AWS 用量（USD，抵扣额度之前；amount 由此换算） */
                 usd_amount?: components["schemas"]["Decimal"];
+                /** @description 已用抵扣额度与退款（USD，≤ 0）；实付 = usd_amount + credits_usd */
+                credits_usd?: components["schemas"]["Decimal"];
                 /** @description 其中未打 Project 标签的部分（USD） */
                 untagged_usd?: components["schemas"]["Decimal"];
             };

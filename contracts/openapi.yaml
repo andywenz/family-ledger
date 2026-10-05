@@ -3182,7 +3182,8 @@ components:
                 currency: { $ref: "#/components/schemas/CurrencyCode" }
                 as_of: { $ref: "#/components/schemas/Timestamp" }
                 tag_coverage: { type: string, enum: [complete, partial, unknown] }
-                usd_amount: { $ref: "#/components/schemas/Decimal", description: AWS 账单原币（USD）金额 }
+                usd_amount: { $ref: "#/components/schemas/Decimal", description: AWS 用量（USD，抵扣额度之前；amount 由此换算） }
+                credits_usd: { $ref: "#/components/schemas/Decimal", description: 已用抵扣额度与退款（USD，≤ 0）；实付 = usd_amount + credits_usd }
                 untagged_usd: { $ref: "#/components/schemas/Decimal", description: 其中未打 Project 标签的部分（USD） }
     Alert:
       type: object

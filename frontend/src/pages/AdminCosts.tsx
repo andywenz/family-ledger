@@ -1,7 +1,7 @@
 import { api, type Schemas } from "../api/client";
 import { ErrorNotice, PageHeading, useLoad } from "../components/common";
 import { PlainShell } from "../components/Layout";
-import { money } from "../lib/format";
+import { decimalToMinor, minorToDecimal, money } from "../lib/format";
 
 const CHANNEL: Record<string, string> = { admin_page: "管理页", feishu: "飞书", email: "邮件" };
 const STATUS: Record<string, string> = { sent: "已送达", pending: "发送中", failed: "失败", unknown: "结果未知" };
@@ -31,10 +31,11 @@ export default function AdminCosts() {
               <>
                 <div className="budget-number">{c.billed.currency} {money(c.billed.amount)}</div>
                 <p className="tiny-note">
-                  {c.billed.usd_amount && <>AWS 账单 USD {money(c.billed.usd_amount)}{c.billed.untagged_usd && c.billed.untagged_usd !== "0.00" && <>（其中 USD {money(c.billed.untagged_usd)} 未打项目标签）</>}<br /></>}
+                  {c.billed.usd_amount && <>AWS 用量 USD {money(c.billed.usd_amount)}（抵扣额度之前）{c.billed.untagged_usd && c.billed.untagged_usd !== "0.00" && <>，其中 USD {money(c.billed.untagged_usd)} 未打项目标签</>}<br /></>}
+                  {c.billed.usd_amount && c.billed.credits_usd && c.billed.credits_usd !== "0.00" && <>已用抵扣额度 USD {money(c.billed.credits_usd)}，实付 USD {money(minorToDecimal(decimalToMinor(c.billed.usd_amount) + decimalToMinor(c.billed.credits_usd)))}<br /></>}
                   同步于 {c.billed.as_of.slice(0, 10)} · 标签覆盖：{c.billed.tag_coverage === "complete" ? "完整" : c.billed.tag_coverage === "partial" ? "部分" : "未知"}
                 </p>
-                <p className="tiny-note">每日从 AWS Cost Explorer 同步一次；AWS 账单数据约有 1 天延迟。</p>
+                <p className="tiny-note">金额与预算告警按抵扣前的用量计算（抵扣额度用完或过期后需真实付费）。每日从 AWS Cost Explorer 同步一次，数据约有 1 天延迟。</p>
               </>
             ) : <p className="muted">尚无账单数据。每日从 AWS Cost Explorer 同步一次当月至今的费用，首次同步后显示（AWS 账单数据约有 1 天延迟）。</p>}
             <p className="tiny-note">阈值：{c.thresholds.map((t) => `${t.percent}% = NZD ${t.amount_nzd}`).join("，")}</p>

@@ -79,7 +79,8 @@ def _latest_bill(ctx: AppContext, month: str) -> dict[str, Any] | None:
 
 
 def _q2(v: Decimal) -> str:
-    return str(v.quantize(Decimal("0.01"), ROUND_HALF_UP))
+    q = v.quantize(Decimal("0.01"), ROUND_HALF_UP)
+    return str(abs(q) if q == 0 else q)  # 不显示“-0.00”
 
 
 def get_costs(ctx: AppContext, actor: Actor, month: str | None = None) -> dict[str, Any]:
@@ -111,7 +112,7 @@ def get_costs(ctx: AppContext, actor: Actor, month: str | None = None) -> dict[s
             "currency": bill["currency"],
             "as_of": bill["as_of"],
             "tag_coverage": bill.get("tag_coverage", "unknown"),
-            **{k: bill[k] for k in ("usd_amount", "untagged_usd") if bill.get(k)},
+            **{k: bill[k] for k in ("usd_amount", "untagged_usd", "credits_usd") if bill.get(k)},
         }
     return out
 
@@ -126,6 +127,7 @@ def record_bill(
     tag_coverage: str,
     usd_amount: str | None = None,
     untagged_usd: str | None = None,
+    credits_usd: str | None = None,
 ) -> None:
     """账单同步（每日一次，D5 由 Budgets／Cost Explorer 任务写入）。不高频调用付费 API。"""
     tx = Tx(ctx.store.table)
@@ -140,6 +142,7 @@ def record_bill(
             "tag_coverage": tag_coverage,
             **({"usd_amount": usd_amount} if usd_amount is not None else {}),
             **({"untagged_usd": untagged_usd} if untagged_usd is not None else {}),
+            **({"credits_usd": credits_usd} if credits_usd is not None else {}),
         }
     )
     ctx.store.commit(tx)
@@ -147,7 +150,10 @@ def record_bill(
 
 def sync_bill(ctx: AppContext, client: Any, now: datetime | None = None) -> dict[str, Any] | None:
     """每日同步 AWS 账单（Cost Explorer，约 1 天延迟）：当月至今费用换算为 NZD 后保存，
-    供费用页显示与按账单触发预算告警。每月 1 日同步上月全月。"""
+    供费用页显示与按账单触发预算告警。每月 1 日同步上月全月。
+
+    金额与告警按抵扣前用量计算（抵扣额度是临时的，用完或过期后需真实付费）；
+    已用抵扣额度单独保存，页面另显示实付。"""
     now = now or ctx.clock()
     end = now.date()
     first = (end - timedelta(days=1)).replace(day=1)
@@ -167,6 +173,7 @@ def sync_bill(ctx: AppContext, client: Any, now: datetime | None = None) -> dict
         tag_coverage=coverage,
         usd_amount=_q2(usd),
         untagged_usd=_q2(cost.untagged),
+        credits_usd=_q2(cost.credits),
     )
     return {"month": month, "usd": _q2(usd), "coverage": coverage}
 
