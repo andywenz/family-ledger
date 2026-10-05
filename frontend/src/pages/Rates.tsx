@@ -37,6 +37,13 @@ export default function Rates() {
                   <b>{money(r.usd_value)}</b>
                 </div>
               ))}
+              {(resolved.data.missing_currencies ?? []).map((code) => (
+                <div key={code} className="rate-row rate-missing">
+                  <span className="rate-symbol">{code}</span>
+                  <div><strong>{fam.currencies.find((c) => c.code === code)?.name_zh ?? code}</strong><small>该日期前 7 天内缺少汇率{isAdmin ? "，可在“补录或修正汇率”中补录" : "，请家庭管理员补录"}</small></div>
+                  <b>—</b>
+                </div>
+              ))}
             </>
           )}
           {resolved.data?.status === "rate_pending" && <p className="tiny-note warn">该日期前 7 天内缺少 {resolved.data.missing_currencies.join("、")} 的汇率，需要补录。</p>}

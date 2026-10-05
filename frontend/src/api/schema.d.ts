@@ -1643,6 +1643,8 @@ export interface components {
                     revision: number;
                 };
             };
+            /** @description 查看整个家庭汇率组时，近 7 天内缺汇率、未列入 rates 的币种（需补录） */
+            missing_currencies?: components["schemas"]["CurrencyCode"][];
         } | {
             /** @constant */
             status: "rate_pending";

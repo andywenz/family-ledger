@@ -2952,6 +2952,10 @@ components:
                   usd_value: { $ref: "#/components/schemas/RateValue" }
                   source: { type: string, enum: [provider, family_manual, base], description: "base 表示 USD 基准本身（恒为 1）" }
                   revision: { type: integer }
+            missing_currencies:
+              description: 查看整个家庭汇率组时，近 7 天内缺汇率、未列入 rates 的币种（需补录）
+              type: array
+              items: { $ref: "#/components/schemas/CurrencyCode" }
         - type: object
           required: [status, missing_currencies, searched_from, searched_to]
           properties:

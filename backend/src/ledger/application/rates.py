@@ -115,6 +115,27 @@ def resolve_rates(
     codes = tuple(sorted(set(currencies or repo.family_currencies(ctx, fid)) | {"NZD", "CNY"}))
     provider, manual = repo.rate_inputs(ctx, fid, d)
     out = resolve(d, codes, provider, manual, provider=ctx.provider)
+    missing: list[str] = []
+    if isinstance(out, RatePendingResult) and currencies is None:
+        # 查看整个家庭的汇率组：个别币种缺汇率（如 ECB 不发布的 MOP）时仍显示其余币种，
+        # 缺的单独列出；记账必需的 NZD／CNY 缺失时才算整组缺失
+        # 汇率组要求同一生效日期：从 NZD／CNY 开始逐个尝试加入，与已选币种凑不成同一组的
+        # 记为缺失（与入账时的判断一致：页面显示缺失的币种，当日记账也会提示缺汇率）
+        chosen: tuple[str, ...] = ("CNY", "NZD")
+        if not isinstance(
+            resolve(d, chosen, provider, manual, provider=ctx.provider), RatePendingResult
+        ):
+            for c in codes:
+                if c in chosen:
+                    continue
+                trial = (*chosen, c)
+                if isinstance(
+                    resolve(d, trial, provider, manual, provider=ctx.provider), RatePendingResult
+                ):
+                    missing.append(c)
+                else:
+                    chosen = trial
+            out = resolve(d, chosen, provider, manual, provider=ctx.provider)
     if isinstance(out, RatePendingResult):
         return {
             "status": "rate_pending",
@@ -128,6 +149,7 @@ def resolve_rates(
         "requested_date": snap["requested_date"],
         "effective_date": snap["effective_date"],
         "rates": snap["rates"],
+        "missing_currencies": missing,
     }
 
 

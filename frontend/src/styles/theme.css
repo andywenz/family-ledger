@@ -356,3 +356,4 @@ html[data-theme="night"] .badge.type-expense{--t:var(--c3)}
 html[data-theme="night"] .badge.type-receivable{--t:var(--c8)}
 html[data-theme="pop"] .badge.type-expense{--t:var(--c2)}
 html[data-theme="pop"] .badge.type-exchange{--t:var(--c8)}
+html[data-theme] .rate-missing small{color:var(--warn-ink)}
