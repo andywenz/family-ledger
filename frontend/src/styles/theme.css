@@ -318,3 +318,21 @@ html[data-theme] .entry-open{flex:none;font-weight:700;color:var(--accent-text)}
   html[data-theme] .ledger-top .export-menu{grid-column:1/-1}
   html[data-theme] .ledger-top .export-menu>summary{width:100%}
 }
+
+/* 标志（Logo.tsx）：方块用导航选中色，线条用其文字色，硬币取各风格的点缀色 */
+html[data-theme]{--logo-tile:var(--nav-on-bg);--logo-ink:var(--nav-on-ink)}
+html[data-theme="juicy"]{--logo-coin:#FF7A45}
+html[data-theme="night"]{--logo-coin:#FF6B8B}
+html[data-theme="pop"]{--logo-coin:#FF5A36}
+html[data-theme] .brand-logo{display:block;width:44px;height:44px;flex:none}
+
+/* 饼图图例：分类 · 金额（主币种）· 比例 */
+html[data-theme] .legend-row:has(.legend-amount){grid-template-columns:8px minmax(0,1fr) auto 3.6em}
+html[data-theme] .legend-row span:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html[data-theme] .legend-amount{font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;white-space:nowrap}
+html[data-theme] .legend-row:has(.legend-amount) b{text-align:right}
+@media(max-width:650px){
+  /* 手机：图例多了金额列，饼图在上、图例在下占满整行，分类名不被截断 */
+  html[data-theme] .chart-body{flex-direction:column;align-items:stretch;gap:18px}
+  html[data-theme] .chart-body .donut{align-self:center}
+}

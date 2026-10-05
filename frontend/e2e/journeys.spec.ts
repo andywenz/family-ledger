@@ -312,6 +312,11 @@ test("饼图中心：大额金额不压到色环（三种风格）", async ({ pa
   await page.getByLabel("原始金额", { exact: true }).fill("98765.43");
   await page.getByRole("button", { name: "保存这笔记录" }).click();
   await expect(page.locator(".donut-total")).toBeVisible();
+  // 图例：分类、金额（主币种）、比例
+  await expect(page.locator(".legend-row .legend-amount").first()).toContainText("NZ$");
+  // 分类名完整显示（不被金额列挤成省略号）
+  const name = page.locator(".legend-row span:nth-child(2)").first();
+  expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
   for (const [title, id] of [["果汁色块", "juicy"], ["夜光", "night"], ["手账波普", "pop"]] as const) {
     await page.getByTitle(title).click();
     const fit = await page.locator(".donut").evaluate((d) => {
@@ -328,6 +333,8 @@ test("桌面侧栏：窗口较矮时可滚动到底部账号区", async ({ page 
   test.skip(info.project.name === "mobile", "手机端侧栏是底部导航条");
   await signInAdmin(page);
   await openFamilyPage(page, `家-${info.project.name}`, "分类管理");
+  await expect(page.locator(".sidebar .brand-logo")).toBeVisible();
+  expect((await page.request.get("/favicon.svg")).headers()["content-type"]).toContain("svg");
   await page.setViewportSize({ width: 1366, height: 640 });
   if (process.env.THEME_SHOTS_DIR) await page.screenshot({ path: `${process.env.THEME_SHOTS_DIR}/sidebar-1366x640.png` });
   await page.setViewportSize({ width: 1280, height: 520 });

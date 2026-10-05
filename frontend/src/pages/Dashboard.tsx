@@ -141,7 +141,7 @@ export default function Dashboard() {
                   {pie!.slices.map((sl, i) => (
                     <div key={sl.category_id} className="legend-row">
                       <i className="legend-dot" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}></i>
-                      <span>{sl.name}</span><b>{sl.share_percent}%</b>
+                      <span>{sl.name}</span><span className="legend-amount">{cash(prim!.currency, sl.net)}</span><b>{sl.share_percent}%</b>
                     </div>
                   ))}
                   {pie!.negatives.length > 0 && (

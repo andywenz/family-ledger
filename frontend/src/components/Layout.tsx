@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
+import { Logo } from "./Logo";
 import { NavLink, Navigate, Outlet, useNavigate, useParams } from "react-router";
 import { api, type CategoryTree, type Currency, type Member, type Schemas } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -46,7 +47,7 @@ function Shell({ breadcrumb, familyName, children, fid }: { breadcrumb: string; 
     <>
       <aside className="sidebar">
         <a className="brand" href="/">
-          <span className="brand-mark">家</span>
+          <Logo />
           <span>小家账本</span>
         </a>
         <label className="family-switch">
