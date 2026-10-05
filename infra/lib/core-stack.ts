@@ -230,6 +230,12 @@ export class CoreStack extends Stack {
       schedule: Schedule.cron({ minute: "30", hour: "16" }),
       targets: [new LambdaFunction(maintenance, { event: RuleTargetInput.fromObject({ tasks: ["rates"] }) })],
     });
+    // AWS 账单同步：每日一次（Cost Explorer 每次请求 USD 0.01），随后按账单检查预算
+    new Rule(this, "BillSync", {
+      schedule: Schedule.cron({ minute: "47", hour: "15" }),
+      targets: [new LambdaFunction(maintenance, { event: RuleTargetInput.fromObject({ tasks: ["bill", "budget"] }) })],
+    });
+    maintenance.addToRolePolicy(new PolicyStatement({ actions: ["ce:GetCostAndUsage"], resources: ["*"] })); // Cost Explorer 不支持资源级权限
     new Rule(this, "DeliverySweep", {
       schedule: Schedule.rate(Duration.minutes(5)),
       targets: [new LambdaFunction(maintenance, { event: RuleTargetInput.fromObject({ tasks: ["outbox"] }) })],

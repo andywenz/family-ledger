@@ -3182,6 +3182,8 @@ components:
                 currency: { $ref: "#/components/schemas/CurrencyCode" }
                 as_of: { $ref: "#/components/schemas/Timestamp" }
                 tag_coverage: { type: string, enum: [complete, partial, unknown] }
+                usd_amount: { $ref: "#/components/schemas/Decimal", description: AWS 账单原币（USD）金额 }
+                untagged_usd: { $ref: "#/components/schemas/Decimal", description: 其中未打 Project 标签的部分（USD） }
     Alert:
       type: object
       required: [alert_id, month, threshold_percent, basis, triggered_at, delivery]

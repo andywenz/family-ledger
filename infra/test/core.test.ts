@@ -170,3 +170,13 @@ test("每日同步汇率：维护任务在 ECB 发布后运行", () => {
     Targets: Match.arrayWith([Match.objectLike({ Input: JSON.stringify({ tasks: ["rates"] }) })]),
   });
 });
+
+test("每日同步 AWS 账单：维护任务可读 Cost Explorer，并随后检查预算", () => {
+  t.hasResourceProperties("AWS::Events::Rule", {
+    ScheduleExpression: "cron(47 15 * * ? *)",
+    Targets: Match.arrayWith([Match.objectLike({ Input: JSON.stringify({ tasks: ["bill", "budget"] }) })]),
+  });
+  const policies = Object.values(t.findResources("AWS::IAM::Policy")) as any[];
+  const ce = policies.flatMap((p) => p.Properties.PolicyDocument.Statement).filter((s: any) => [s.Action].flat().includes("ce:GetCostAndUsage"));
+  if (ce.length !== 1 || [ce[0].Action].flat().length !== 1) throw new Error("Cost Explorer 权限应单独、只读");
+});

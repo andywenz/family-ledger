@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -111,12 +111,21 @@ def get_costs(ctx: AppContext, actor: Actor, month: str | None = None) -> dict[s
             "currency": bill["currency"],
             "as_of": bill["as_of"],
             "tag_coverage": bill.get("tag_coverage", "unknown"),
+            **{k: bill[k] for k in ("usd_amount", "untagged_usd") if bill.get(k)},
         }
     return out
 
 
 def record_bill(
-    ctx: AppContext, *, month: str, amount: str, currency: str, as_of: datetime, tag_coverage: str
+    ctx: AppContext,
+    *,
+    month: str,
+    amount: str,
+    currency: str,
+    as_of: datetime,
+    tag_coverage: str,
+    usd_amount: str | None = None,
+    untagged_usd: str | None = None,
 ) -> None:
     """账单同步（每日一次，D5 由 Budgets／Cost Explorer 任务写入）。不高频调用付费 API。"""
     tx = Tx(ctx.store.table)
@@ -129,9 +138,37 @@ def record_bill(
             "currency": currency,
             "as_of": keys.ts(as_of),
             "tag_coverage": tag_coverage,
+            **({"usd_amount": usd_amount} if usd_amount is not None else {}),
+            **({"untagged_usd": untagged_usd} if untagged_usd is not None else {}),
         }
     )
     ctx.store.commit(tx)
+
+
+def sync_bill(ctx: AppContext, client: Any, now: datetime | None = None) -> dict[str, Any] | None:
+    """每日同步 AWS 账单（Cost Explorer，约 1 天延迟）：当月至今费用换算为 NZD 后保存，
+    供费用页显示与按账单触发预算告警。每月 1 日同步上月全月。"""
+    now = now or ctx.clock()
+    end = now.date()
+    first = (end - timedelta(days=1)).replace(day=1)
+    cost = client.month_to_date(first, end)
+    usd = cost.tagged + cost.untagged
+    if cost.currency != "USD":
+        return None
+    nzd, _ = _usd_to_nzd(ctx, usd, now)
+    coverage = "complete" if cost.untagged < Decimal("0.01") else "partial"
+    month = first.strftime("%Y-%m")
+    record_bill(
+        ctx,
+        month=month,
+        amount=_q2(nzd) if nzd is not None else _q2(usd),
+        currency="NZD" if nzd is not None else "USD",
+        as_of=now,
+        tag_coverage=coverage,
+        usd_amount=_q2(usd),
+        untagged_usd=_q2(cost.untagged),
+    )
+    return {"month": month, "usd": _q2(usd), "coverage": coverage}
 
 
 def check_budget(ctx: AppContext, now: datetime | None = None) -> list[int]:

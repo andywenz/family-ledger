@@ -92,6 +92,13 @@ def sync_recent_rates(ctx: AppContext, now: datetime | None = None, client: Any 
     )
 
 
+def sync_bill(ctx: AppContext, now: datetime | None = None, client: Any = None) -> Any:
+    """每日一次（Cost Explorer 按请求计费，不高频调用）。"""
+    from ledger.adapters.cost_explorer import CostExplorerClient
+
+    return costs.sync_bill(ctx, client or CostExplorerClient(), now)
+
+
 def run(
     ctx: AppContext,
     *,
@@ -99,10 +106,13 @@ def run(
     feishu_api: Any,
     tasks: tuple[str, ...] = ("outbox", "trash", "orphans", "batches", "budget"),
     now: datetime | None = None,
+    cost_client: Any = None,
 ) -> dict[str, Any]:
     out: dict[str, Any] = {}
     if "rates" in tasks:
         out["rate_sets_added"] = sync_recent_rates(ctx, now)
+    if "bill" in tasks:  # 须在 budget 之前，使告警用到最新账单
+        out["bill"] = sync_bill(ctx, now, cost_client)
     if "outbox" in tasks and feishu_api is not None:  # 飞书未配置时消息保持待发送
         out["feishu_delivered"] = feishu.deliver_due(ctx, feishu_api, now)
     if "trash" in tasks:
