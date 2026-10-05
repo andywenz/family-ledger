@@ -303,3 +303,23 @@ test("家庭时区：可修改并在刷新后保持", async ({ page }, info) => 
   await page.getByRole("button", { name: "保存设置" }).click();
   await expect(page.getByText("设置已保存")).toBeVisible();
 });
+
+test("饼图中心：大额金额不压到色环（三种风格）", async ({ page }, info) => {
+  const project = info.project.name;
+  await signInAdmin(page);
+  await openFamilyPage(page, `家-${project}`, "分类管理");
+  await page.getByRole("link", { name: "记一笔" }).first().click();
+  await page.getByLabel("原始金额", { exact: true }).fill("98765.43");
+  await page.getByRole("button", { name: "保存这笔记录" }).click();
+  await expect(page.locator(".donut-total")).toBeVisible();
+  for (const [title, id] of [["果汁色块", "juicy"], ["夜光", "night"], ["手账波普", "pop"]] as const) {
+    await page.getByTitle(title).click();
+    const fit = await page.locator(".donut").evaluate((d) => {
+      const hole = d.getBoundingClientRect().width - 2 * parseFloat(getComputedStyle(d, "::before").top);
+      return { hole, text: d.querySelector(".donut-total")!.getBoundingClientRect().width };
+    });
+    expect(fit.text).toBeLessThanOrEqual(fit.hole * 0.9);
+    if (process.env.THEME_SHOTS_DIR) await page.locator(".dashboard-top").screenshot({ path: `${process.env.THEME_SHOTS_DIR}/donut-${id}-${project}.png` });
+  }
+  await page.getByTitle("果汁色块").click();
+});

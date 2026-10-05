@@ -1,3 +1,4 @@
+import type React from "react";
 import { useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { ApiError, api, type Dashboard as DashboardData, type Entry } from "../api/client";
@@ -10,6 +11,18 @@ import { ENTRY_TYPES, METHODS, METHOD_LABEL, TYPE_LABEL } from "../lib/labels";
 
 // 饼图配色随界面风格变化（theme.css 中的 --c1…--c9）
 const PIE_COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)", "var(--c7)", "var(--c8)", "var(--c9)"];
+
+// 饼图中心金额：符号与小数用小字，整数部分按长度缩放，保证落在圆孔内（--len 供 CSS 计算字号）
+function DonutTotal({ code, value }: { code: string; value: string }) {
+  const [int = "", frac] = money(value).split(".");
+  const sym = currencySymbol(code).trim();
+  const len = int.length + 0.5 * (sym.length + (frac ? frac.length + 1 : 0));
+  return (
+    <strong className="donut-total" style={{ "--len": len } as React.CSSProperties} aria-label={cash(code, value)}>
+      <small>{sym}</small>{int}{frac !== undefined && <small>.{frac}</small>}
+    </strong>
+  );
+}
 
 export default function Dashboard() {
   const fam = useFamily();
@@ -107,13 +120,13 @@ export default function Dashboard() {
                   {sec.missing_count > 0 && <small>（{sec.missing_count} 笔缺少汇率，未计入）</small>}
                 </div>
               )}
-              <div className="card-footnote"><span className="dot"></span>消费 {cash(prim!.currency, prim!.expense_gross)} · 退款 {cash(prim!.currency, prim!.refund)}</div>
+              <div className="card-footnote"><span className="dot"></span><span className="nowrap">消费 {cash(prim!.currency, prim!.expense_gross)}</span> · <span className="nowrap">退款 {cash(prim!.currency, prim!.refund)}</span></div>
             </article>
             <article className="card">
               <div className="section-head"><h2>钱花在了哪里</h2><small>一级分类 · 合 {prim!.currency}</small></div>
               <div className="chart-body">
                 <div className="donut" role="img" aria-label="各分类净支出占比" style={{ background: gradient ? `conic-gradient(${gradient})` : "#ecf0e5" }}>
-                  <div className="donut-center">正净支出合计<strong>{cash(prim!.currency, pie!.denominator)}</strong>{pie!.slices.length} 个分类</div>
+                  <div className="donut-center">正净支出合计<DonutTotal code={prim!.currency} value={pie!.denominator} />{pie!.slices.length} 个分类</div>
                 </div>
                 <div className="legend">
                   {pie!.empty && <p className="muted">这个月没有正净支出的分类。</p>}

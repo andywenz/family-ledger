@@ -266,3 +266,10 @@ html[data-theme] .spending-hero:after{display:none}
 @media(max-width:650px){.theme-switch button{min-height:40px;min-width:40px;justify-content:center}}
 /* 手机明细表：备注列给最小宽度，避免被挤成一字一行把每行撑得很高（表格本身可横向滚动） */
 @media(max-width:650px){html[data-theme] td.note-cell{min-width:150px}html[data-theme] td{padding:12px 12px}}
+
+/* 饼图中心金额：以圆环为尺寸容器，字号随金额长度缩小（最大 23px），不压到色环 */
+.donut{container-type:inline-size}
+html[data-theme] .donut-center .donut-total{display:block;max-width:64cqi;white-space:nowrap;line-height:1.5;letter-spacing:-.4px;font-variant-numeric:tabular-nums;font-size:min(23px,calc(64cqi / (var(--len, 8) * .6)))}
+html[data-theme] .donut-center .donut-total small{font-size:.58em;font-weight:700;letter-spacing:0}
+html[data-theme] .donut-center .donut-total small:first-child{margin-right:1px}
+.nowrap{white-space:nowrap}
