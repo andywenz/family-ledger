@@ -85,7 +85,7 @@ export default function FamilySettings() {
               </select>
             </label>
           </div>
-          <p className="tiny-note">辅助币种决定月度总览里“合 xxx”的显示：净支出、消费方式和明细列表。选“不显示”则只显示纽币；不影响已入账的金额。</p>
+          <p className="tiny-note">默认币种是新记账时预选的币种，也是月度总览的主显示币种；辅助币种显示在净支出、消费方式的小字和明细列表的第二个“合 xxx”列。选“不显示”则只显示默认币种。两者都只影响显示，不改变已入账的金额，也不影响导出。</p>
           <p className="tiny-note">家庭时区 · {fam.config.timezone}<br />原始照片随有效账目长期保存。</p>
           {isAdmin && <button className="button primary" onClick={() => void call((key) => api.patch(`/families/${fam.fid}/config`, { default_currency: cur, default_payment_method: method, secondary_currency: secondary || null, expected_version: fam.config.version }, { key }), "设置已保存")}>保存设置</button>}
         </section>
