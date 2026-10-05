@@ -60,7 +60,7 @@ export function EntryList({ items, primary, secondary, colorOf, onOpen }: {
                     </span>
                     <span className="entry-line">
                       <span className="entry-note">
-                        {e.type !== "expense" && <span className={`badge ${tone}`}>{TYPE_LABEL[e.type]}</span>}
+                        {e.type !== "expense" && <span className={`badge type-${e.type}`}>{TYPE_LABEL[e.type]}</span>}
                         {!e.counts_in_stats && <span className="badge">不计收支</span>}
                         {e.note || <span className="entry-empty">无备注</span>}
                         {e.attachments.length > 0 && <span title="有照片"> 📎</span>}

@@ -336,3 +336,23 @@ html[data-theme] .legend-row:has(.legend-amount) b{text-align:right}
   html[data-theme] .chart-body{flex-direction:column;align-items:stretch;gap:18px}
   html[data-theme] .chart-body .donut{align-self:center}
 }
+
+/* 账目类型：每种类型一种底色。收入、退款沿用语义色；其余取当前风格的饼图色板，
+   与卡片底色混合成浅底、与文字色混合成深字，三种风格下都保证可读 */
+html[data-theme] .badge[class*="type-"]{--t:var(--c1);background:color-mix(in srgb,var(--t) 24%,var(--surface));color:color-mix(in srgb,var(--t) 55%,var(--ink))}
+html[data-theme] .badge.type-expense{--t:var(--c1)}
+html[data-theme] .badge.type-internal_transfer{--t:var(--c4)}
+html[data-theme] .badge.type-exchange{--t:var(--c5)}
+html[data-theme] .badge.type-card_repayment{--t:var(--c6)}
+html[data-theme] .badge.type-receivable{--t:var(--c7)}
+html[data-theme] .badge.type-income{background:var(--income-bg);color:var(--income-ink)}
+html[data-theme] .badge.type-refund{background:var(--refund-bg);color:var(--refund-ink)}
+
+/* 月度总览明细：表头在各列居中 */
+html[data-theme] .dash-ledger th,html[data-theme] .dash-ledger th.numeric{text-align:center}
+/* 按风格避开撞色：每种风格里七种类型色相互不重复 */
+html[data-theme="juicy"] .badge.type-receivable{--t:var(--c8)}
+html[data-theme="night"] .badge.type-expense{--t:var(--c3)}
+html[data-theme="night"] .badge.type-receivable{--t:var(--c8)}
+html[data-theme="pop"] .badge.type-expense{--t:var(--c2)}
+html[data-theme="pop"] .badge.type-exchange{--t:var(--c8)}

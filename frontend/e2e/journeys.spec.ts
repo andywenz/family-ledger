@@ -92,6 +92,13 @@ test("首次登录→创建家庭→记一笔→编辑→退款→删除恢复",
   await page.getByRole("dialog").getByRole("button", { name: "保存退款", exact: true }).click();
   await expect(page.locator(".ledger-card [data-entry]")).toHaveCount(2);
   await expect(page.locator(".spending-hero .number")).toContainText("15.00");
+  if (project === "desktop") {
+    // 类型列：不同类型不同底色；表头在各列居中
+    const bg = (t: string) => page.locator(`.ledger-card .badge.type-${t}`).first().evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(await bg("expense")).not.toBe(await bg("refund"));
+    await expect(page.locator(".dash-ledger th").first()).toHaveCSS("text-align", "center");
+    await expect(page.locator(".dash-ledger th.numeric").first()).toHaveCSS("text-align", "center");
+  }
 
   // 删除有退款的消费：明确提示一并删除
   await page.locator('.ledger-card [data-entry][data-type="expense"]').getByRole("button", { name: /查看或编辑/ }).click();

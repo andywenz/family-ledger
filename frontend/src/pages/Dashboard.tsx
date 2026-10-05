@@ -165,7 +165,7 @@ export default function Dashboard() {
               ))}
             </article>
           </section>
-          <section className="card ledger-card">
+          <section className="card ledger-card dash-ledger">
             <div className="ledger-top">
               <h2>本月明细<small>{data!.items.length} 笔记录</small></h2>
               <div className="filters">
@@ -219,7 +219,7 @@ export default function Dashboard() {
                   {data!.items.map((e) => (
                     <tr key={e.entry_id} data-entry data-type={e.type}>
                       <td>{shortDate(e.business_date)}</td>
-                      <td><span className="badge">{TYPE_LABEL[e.type]}</span>{!e.counts_in_stats && <small className="no-stat">不计收支</small>}</td>
+                      <td><span className={`badge type-${e.type}`}>{TYPE_LABEL[e.type]}</span>{!e.counts_in_stats && <small className="no-stat">不计收支</small>}</td>
                       <td>{e.category.parent_name}</td>
                       <td>{e.category.leaf_name}</td>
                       <td>{e.currency}</td>
