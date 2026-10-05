@@ -287,3 +287,19 @@ test("辅助币种：不显示时隐藏“合 xxx”，选 AUD 后按澳元显�
   await page.getByLabel("默认币种").selectOption("NZD");
   await pick("人民币（CNY）"); // 恢复默认，避免影响其他用例
 });
+
+test("家庭时区：可修改并在刷新后保持", async ({ page }, info) => {
+  const project = info.project.name;
+  await signInAdmin(page);
+  await openFamilyPage(page, `家-${project}`, "家庭与设置");
+  const tz = page.getByLabel("家庭时区");
+  await expect(tz).toHaveValue("Pacific/Auckland");
+  await tz.selectOption("Asia/Shanghai");
+  await page.getByRole("button", { name: "保存设置" }).click();
+  await expect(page.getByText("设置已保存")).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("家庭时区")).toHaveValue("Asia/Shanghai");
+  await page.getByLabel("家庭时区").selectOption("Pacific/Auckland"); // 恢复，避免影响其他用例
+  await page.getByRole("button", { name: "保存设置" }).click();
+  await expect(page.getByText("设置已保存")).toBeVisible();
+});

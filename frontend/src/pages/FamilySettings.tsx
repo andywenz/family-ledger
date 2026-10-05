@@ -5,6 +5,27 @@ import { ErrorNotice, PageHeading, useAction, useLoad, useToast } from "../compo
 import { useFamily } from "../components/Layout";
 import { METHODS } from "../lib/labels";
 
+// 家庭时区：常用的放前面并附中文名，其余取浏览器支持的 IANA 时区（服务端再校验）
+const COMMON_ZONES: [string, string][] = [
+  ["Pacific/Auckland", "新西兰"], ["Australia/Sydney", "悉尼／墨尔本"], ["Australia/Brisbane", "布里斯班"],
+  ["Australia/Perth", "珀斯"], ["Asia/Shanghai", "中国大陆"], ["Asia/Hong_Kong", "香港"], ["Asia/Macau", "澳门"],
+  ["Asia/Taipei", "台北"], ["Asia/Singapore", "新加坡"], ["Asia/Tokyo", "东京"], ["Asia/Seoul", "首尔"],
+  ["Europe/London", "伦敦"], ["Europe/Paris", "巴黎／柏林"], ["America/Vancouver", "温哥华"],
+  ["America/Los_Angeles", "洛杉矶"], ["America/Toronto", "多伦多"], ["America/New_York", "纽约"], ["UTC", "协调世界时"],
+];
+
+function otherZones(current: string): string[] {
+  let all: string[] = [];
+  try {
+    all = Intl.supportedValuesOf("timeZone");
+  } catch {
+    all = [];
+  }
+  const common = new Set(COMMON_ZONES.map(([z]) => z));
+  if (!all.includes(current)) all = [current, ...all]; // 保证当前值可选中
+  return all.filter((z) => !common.has(z));
+}
+
 export default function FamilySettings() {
   const fam = useFamily();
   const { me, reloadMe } = useAuth();
@@ -16,6 +37,7 @@ export default function FamilySettings() {
   const [cur, setCur] = useState(fam.config.default_currency);
   const [method, setMethod] = useState(fam.config.default_payment_method);
   const [secondary, setSecondary] = useState(fam.config.secondary_currency ?? "");
+  const [tz, setTz] = useState(fam.config.timezone);
   const invites = useLoad(() => (isAdmin ? api.get<{ items: Schemas["Invitation"][] }>(`/families/${fam.fid}/invitations`) : Promise.resolve({ items: [] })), [fam.fid, isAdmin]);
 
   async function call(fn: (key: string) => Promise<unknown>, msg: string) {
@@ -84,10 +106,20 @@ export default function FamilySettings() {
                 {fam.currencies.filter((c) => c.code !== cur).map((c) => <option key={c.code} value={c.code}>{c.name_zh}（{c.code}）</option>)}
               </select>
             </label>
+            <label className="field">家庭时区
+              <select value={tz} disabled={!isAdmin} onChange={(e) => setTz(e.target.value)}>
+                <optgroup label="常用">
+                  {COMMON_ZONES.map(([z, l]) => <option key={z} value={z}>{l}（{z}）</option>)}
+                </optgroup>
+                <optgroup label="其他时区">
+                  {otherZones(tz).map((z) => <option key={z} value={z}>{z}</option>)}
+                </optgroup>
+              </select>
+            </label>
           </div>
           <p className="tiny-note">默认币种是新记账时预选的币种，也是月度总览的主显示币种；辅助币种显示在净支出、消费方式的小字和明细列表的第二个“合 xxx”列。选“不显示”则只显示默认币种。两者都只影响显示，不改变已入账的金额，也不影响导出。</p>
-          <p className="tiny-note">家庭时区 · {fam.config.timezone}<br />原始照片随有效账目长期保存。</p>
-          {isAdmin && <button className="button primary" onClick={() => void call((key) => api.patch(`/families/${fam.fid}/config`, { default_currency: cur, default_payment_method: method, secondary_currency: secondary || null, expected_version: fam.config.version }, { key }), "设置已保存")}>保存设置</button>}
+          <p className="tiny-note">家庭时区决定“今天”是哪一天：新记账的默认日期、AI 识别“昨天”等相对日期、月度总览默认打开的月份。修改后已入账账目的日期不变。<br />原始照片随有效账目长期保存。</p>
+          {isAdmin && <button className="button primary" onClick={() => void call((key) => api.patch(`/families/${fam.fid}/config`, { default_currency: cur, default_payment_method: method, secondary_currency: secondary || null, timezone: tz, expected_version: fam.config.version }, { key }), "设置已保存")}>保存设置</button>}
         </section>
       </div>
       {toast.node}

@@ -328,7 +328,14 @@ def update_config(
             on_fail=lambda _: StaleRead("设置已变化"),
         )
         if timezone is not None:
-            tx.update(keys.family(fid), keys.META, "SET timezone = :t", values={":t": timezone})
+            # timezone 是 DynamoDB 保留字，须用属性名占位
+            tx.update(
+                keys.family(fid),
+                keys.META,
+                "SET #tz = :t",
+                names={"#tz": "timezone"},
+                values={":t": timezone},
+            )
         tx.put_new(_audit(ctx, fid, actor, "family.config", fid))
         return Built(
             tx,
