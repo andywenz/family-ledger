@@ -323,3 +323,18 @@ test("饼图中心：大额金额不压到色环（三种风格）", async ({ pa
   }
   await page.getByTitle("果汁色块").click();
 });
+
+test("桌面侧栏：窗口较矮时可滚动到底部账号区", async ({ page }, info) => {
+  test.skip(info.project.name === "mobile", "手机端侧栏是底部导航条");
+  await signInAdmin(page);
+  await openFamilyPage(page, `家-${info.project.name}`, "分类管理");
+  await page.setViewportSize({ width: 1366, height: 640 });
+  if (process.env.THEME_SHOTS_DIR) await page.screenshot({ path: `${process.env.THEME_SHOTS_DIR}/sidebar-1366x640.png` });
+  await page.setViewportSize({ width: 1280, height: 520 });
+  const side = page.locator(".sidebar");
+  expect(await side.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  const logout = side.getByRole("button", { name: "退出登录" });
+  await logout.scrollIntoViewIfNeeded();
+  await expect(logout).toBeInViewport({ ratio: 1 });
+  if (process.env.THEME_SHOTS_DIR) await page.screenshot({ path: `${process.env.THEME_SHOTS_DIR}/sidebar-1280x520-bottom.png` });
+});
