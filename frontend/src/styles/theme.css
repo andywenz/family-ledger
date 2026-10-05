@@ -285,3 +285,36 @@ html[data-theme] .donut-center .donut-total small:first-child{margin-right:1px}
   html[data-theme] nav a{padding-block:9px;margin-bottom:3px}
   html[data-theme] .daily-note{padding-block:12px}
 }
+
+/* 手机版明细：按日期分组的流水清单（EntryList，仅在手机断点渲染） */
+html[data-theme] .entry-list{padding:0 0 4px}
+html[data-theme] .entry-legend{margin:0;padding:0 18px 10px;font-size:11px;color:var(--muted)}
+html[data-theme] .entry-legend span{color:var(--ink);font-weight:700;margin-left:2px}
+html[data-theme] .entry-day-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0;padding:9px 18px;background:var(--th-bg);color:var(--th-ink);font-size:12px;font-weight:700;border-block:1px solid var(--row-line)}
+html[data-theme] .entry-day-total{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink)}
+html[data-theme] .entry-day ul{list-style:none;margin:0;padding:0}
+html[data-theme] .entry-day li+li{border-top:1px solid var(--row-line)}
+html[data-theme] .entry-item{display:flex;flex-direction:column;gap:3px;width:100%;padding:12px 18px;border:0;background:none;color:inherit;text-align:left;font:inherit;min-height:44px}
+html[data-theme] .entry-item:active{background:var(--nav-hover)}
+html[data-theme] .entry-item:focus-visible{outline:3px solid var(--focus);outline-offset:-3px}
+html[data-theme] .entry-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;min-width:0}
+html[data-theme] .entry-cat{display:flex;align-items:baseline;gap:6px;min-width:0;overflow:hidden}
+html[data-theme] .entry-cat strong{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-theme] .entry-dot{flex:0 0 9px;width:9px;height:9px;border-radius:3px;align-self:center}
+html[data-theme] .entry-parent{font-size:11px;color:var(--muted);white-space:nowrap}
+html[data-theme] .entry-amount{flex:none;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+html[data-theme] .entry-amount.income{color:var(--income-ink)}
+html[data-theme] .entry-amount.refund{color:var(--refund-ink)}
+html[data-theme] .entry-note{min-width:0;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-theme] .entry-note .badge{margin-right:6px;font-size:10px;vertical-align:1px}
+html[data-theme] .entry-empty{color:var(--muted)}
+html[data-theme] .entry-secondary{flex:none;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+html[data-theme] .entry-meta{font-size:11px;color:var(--muted)}
+html[data-theme] .entry-meta>span:first-child{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-theme] .entry-open{flex:none;font-weight:700;color:var(--accent-text)}
+@media(max-width:650px){
+  html[data-theme] .ledger-top .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  html[data-theme] .ledger-top .filters select{width:100%;min-width:0}
+  html[data-theme] .ledger-top .export-menu{grid-column:1/-1}
+  html[data-theme] .ledger-top .export-menu>summary{width:100%}
+}

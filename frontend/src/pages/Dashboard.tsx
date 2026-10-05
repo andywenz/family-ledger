@@ -3,10 +3,12 @@ import { useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { ApiError, api, type Dashboard as DashboardData, type Entry } from "../api/client";
 import { EntryDialog } from "../components/EntryDialog";
+import { EntryList } from "../components/EntryList";
 import { ErrorNotice, PageHeading, useLoad, useToast } from "../components/common";
 import { Icon } from "../components/Icon";
 import { useFamily } from "../components/Layout";
 import { cash, currencySymbol, currentMonth, money, monthLabel, shiftMonth, shortDate } from "../lib/format";
+import { PHONE_QUERY, useMediaQuery } from "../lib/media";
 import { ENTRY_TYPES, METHODS, METHOD_LABEL, TYPE_LABEL } from "../lib/labels";
 
 // 饼图配色随界面风格变化（theme.css 中的 --c1…--c9）
@@ -37,6 +39,7 @@ export default function Dashboard() {
   };
   const [openEntry, setOpenEntry] = useState<Entry | null>(null);
   const toast = useToast();
+  const phone = useMediaQuery(PHONE_QUERY);
 
   const { data, error, reload } = useLoad(async () => {
     const [summary, first] = await Promise.all([
@@ -79,6 +82,11 @@ export default function Dashboard() {
   const prim = s?.primary;
   const sec = s?.secondary ?? null;
   const pie = prim?.category_pie;
+  const sliceIndex = new Map(pie?.slices.map((sl, i) => [sl.category_id, i]) ?? []);
+  const colorOf = (parentId: string) => {
+    const i = sliceIndex.get(parentId);
+    return i === undefined ? undefined : PIE_COLORS[i % PIE_COLORS.length];
+  };
   const currencyName = (code: string) => fam.currencies.find((c) => c.code === code)?.name_zh ?? code;
   let at = 0;
   const gradient = pie?.slices.map((sl, i) => {
@@ -195,18 +203,21 @@ export default function Dashboard() {
             {activeFilters.length > 0 && (
               <p className="filter-note">当前筛选：{activeFilters.map(([k, v]) => `${FILTER_LABEL[k]}=${labelFor(k, v!, fam)}`).join("，")}。汇总、图表与导出使用同一范围。<button className="text-button" onClick={() => setParams(new URLSearchParams({ month }))}>清除</button></p>
             )}
+            {phone ? (
+              <EntryList items={data!.items} primary={prim!.currency} secondary={sec?.currency ?? null} colorOf={colorOf} onOpen={setOpenEntry} />
+            ) : (
             <div className="table-scroll">
               <table>
                 <thead>
                   <tr>
                     <th>日期</th><th>类型</th><th>一级分类</th><th>二级分类</th><th>币种</th>
-                    <th className="numeric">原始金额</th><th className="numeric">合 {prim!.currency}</th>{sec && <th className="numeric">合 {sec.currency}</th>}
+                    <th className="numeric">原始金额</th><th className="numeric" data-currency-role="primary">合 {prim!.currency}</th>{sec && <th className="numeric" data-currency-role="secondary">合 {sec.currency}</th>}
                     <th>备注</th><th>方式</th><th>录入人</th><th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data!.items.map((e) => (
-                    <tr key={e.entry_id}>
+                    <tr key={e.entry_id} data-entry data-type={e.type}>
                       <td>{shortDate(e.business_date)}</td>
                       <td><span className="badge">{TYPE_LABEL[e.type]}</span>{!e.counts_in_stats && <small className="no-stat">不计收支</small>}</td>
                       <td>{e.category.parent_name}</td>
@@ -229,6 +240,7 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
+            )}
             <div className="ledger-bottom"><span>按业务日期从新到旧 · 金额为记账时的汇率快照</span><span>共 {data!.items.length} 笔</span></div>
           </section>
         </>

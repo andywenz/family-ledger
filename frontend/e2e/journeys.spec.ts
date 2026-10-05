@@ -59,7 +59,7 @@ test("首次登录→创建家庭→记一笔→编辑→退款→删除恢复",
   await noHorizontalOverflow(page);
   await shot(page, "02-new-entry", project);
   await page.getByRole("button", { name: "保存这笔记录" }).click();
-  await expect(page.getByRole("cell", { name: "=SUM(A1) 超市", exact: true })).toBeVisible();
+  await expect(page.locator(".ledger-card [data-entry]").filter({ hasText: "=SUM(A1) 超市" })).toBeVisible();
   await expect(page.locator(".spending-hero .number")).toContainText("5.00");
   await shot(page, "03-dashboard-one", project);
   // 导出：一个“导出”按钮，展开两种格式；点 Excel 触发下载
@@ -82,7 +82,7 @@ test("首次登录→创建家庭→记一笔→编辑→退款→删除恢复",
   await shot(page, "04-edit-dialog", project);
   await page.getByRole("dialog").getByRole("button", { name: "保存修改", exact: true }).click();
   await expect(page.locator(".spending-hero .number")).toContainText("18.00");
-  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await expect(page.locator(".ledger-card [data-entry]")).toHaveCount(1);
 
   // 退款：关联原消费
   await page.getByRole("button", { name: /查看或编辑/ }).first().click();
@@ -90,11 +90,11 @@ test("首次登录→创建家庭→记一笔→编辑→退款→删除恢复",
   await expect(page.getByText(/尚可退款 NZD 18\.00/)).toBeVisible();
   await page.getByLabel("原始金额", { exact: true }).fill("3");
   await page.getByRole("dialog").getByRole("button", { name: "保存退款", exact: true }).click();
-  await expect(page.locator("tbody tr")).toHaveCount(2);
+  await expect(page.locator(".ledger-card [data-entry]")).toHaveCount(2);
   await expect(page.locator(".spending-hero .number")).toContainText("15.00");
 
   // 删除有退款的消费：明确提示一并删除
-  await page.getByRole("row", { name: /支出/ }).getByRole("button", { name: /查看或编辑/ }).click();
+  await page.locator('.ledger-card [data-entry][data-type="expense"]').getByRole("button", { name: /查看或编辑/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: "删除", exact: true }).click();
   await expect(page.getByText(/关联退款，将一并移入回收站/)).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "确认删除", exact: true }).click();
@@ -158,7 +158,7 @@ test("分类改名同步到历史账目", async ({ page }, info) => {
   await expect(page.getByRole("heading", { name: "吃喝" })).toBeVisible();
   await shot(page, "08-categories", info.project.name);
   await page.getByRole("link", { name: "月度总览" }).click();
-  await expect(page.getByRole("cell", { name: "吃喝", exact: true }).first()).toBeVisible();
+  await expect(page.locator(".ledger-card [data-entry]").getByText("吃喝", { exact: true }).first()).toBeVisible();
 });
 
 test("AI 识别→修改候选→确认入账（离线替身模型）", async ({ page }, info) => {
@@ -182,7 +182,7 @@ test("AI 识别→修改候选→确认入账（离线替身模型）", async ({
   await expect(page.getByLabel("今天有什么开销？")).toHaveValue("");
   await expect(page.getByRole("heading", { name: "待你确认" })).toHaveCount(0);
   await page.getByRole("link", { name: "月度总览" }).click();
-  await expect(page.getByRole("cell", { name: "46.50", exact: true }).first()).toBeVisible();
+  await expect(page.locator(".ledger-card [data-entry]").filter({ hasText: "46.50" }).first()).toBeVisible();
   // Dashboard 不再显示收入／结余卡片；净支出、分类、消费方式在同一区域
   await expect(page.getByText("本月收入")).toHaveCount(0);
   await expect(page.getByText("本月结余")).toHaveCount(0);
@@ -264,12 +264,12 @@ test("辅助币种：不显示时隐藏“合 xxx”，选 AUD 后按澳元显�
   await page.getByRole("link", { name: "月度总览" }).first().click();
   await expect(page.getByText("本月明细")).toBeVisible();
   await expect(page.getByText(/合 CNY/)).toHaveCount(0);
-  await expect(page.getByRole("columnheader", { name: /^合 (CNY|AUD)$/ })).toHaveCount(0);
+  await expect(page.locator("[data-currency-role=secondary]")).toHaveCount(0);
   await openFamilyPage(page, `家-${project}`, "家庭与设置");
   await pick("澳大利亚元（AUD）");
   await page.getByRole("link", { name: "月度总览" }).first().click();
   await expect(page.getByText(/合 AUD/).first()).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "合 AUD" })).toBeVisible();
+  await expect(page.locator("[data-currency-role=secondary]")).toHaveText("合 AUD");
   const hero = page.locator(".spending-hero");
   await expect(hero).toContainText("新西兰元（NZD）");
   await expect(hero).toContainText("NZ$");
@@ -280,7 +280,7 @@ test("辅助币种：不显示时隐藏“合 xxx”，选 AUD 后按澳元显�
   await page.getByRole("button", { name: "保存设置" }).click();
   await expect(page.getByText("设置已保存")).toBeVisible();
   await page.getByRole("link", { name: "月度总览" }).first().click();
-  await expect(page.getByRole("columnheader").filter({ hasText: /^合 / }).first()).toHaveText("合 CNY");
+  await expect(page.locator("[data-currency-role=primary]")).toHaveText("合 CNY");
   await expect(hero).toContainText("人民币（CNY）");
   await expect(hero).toContainText("¥");
   await openFamilyPage(page, `家-${project}`, "家庭与设置");
@@ -337,4 +337,30 @@ test("桌面侧栏：窗口较矮时可滚动到底部账号区", async ({ page 
   await logout.scrollIntoViewIfNeeded();
   await expect(logout).toBeInViewport({ ratio: 1 });
   if (process.env.THEME_SHOTS_DIR) await page.screenshot({ path: `${process.env.THEME_SHOTS_DIR}/sidebar-1280x520-bottom.png` });
+});
+
+test("手机明细：按日期分组的清单，无需左右滑动", async ({ page }, info) => {
+  test.skip(info.project.name !== "mobile", "仅手机端");
+  await signInAdmin(page);
+  await openFamilyPage(page, `家-${info.project.name}`, "分类管理");
+  await page.getByRole("link", { name: "月度总览" }).first().click();
+  const list = page.locator(".entry-list");
+  await expect(list).toBeVisible();
+  await expect(page.locator(".ledger-card table")).toHaveCount(0);
+  await expect(list.locator(".entry-day-head").first()).toContainText(/\d+月\d+日 周./);
+  const item = list.locator("[data-entry]").first();
+  await expect(item.locator(".entry-amount")).toContainText("NZ$");
+  await expect(item.locator(".entry-open")).toContainText("编辑");
+  // 整张清单不超出卡片宽度
+  expect(await page.locator(".ledger-card").evaluate((c) => c.scrollWidth <= c.clientWidth)).toBe(true);
+  await noHorizontalOverflow(page);
+  if (process.env.THEME_SHOTS_DIR) {
+    for (const [title, id] of [["果汁色块", "juicy"], ["夜光", "night"], ["手账波普", "pop"]] as const) {
+      await page.getByTitle(title).click();
+      await page.locator(".ledger-card").screenshot({ path: `${process.env.THEME_SHOTS_DIR}/list-${id}.png` });
+    }
+    await page.getByTitle("果汁色块").click();
+  }
+  await item.getByRole("button").click();
+  await expect(page.getByRole("dialog")).toBeVisible();
 });

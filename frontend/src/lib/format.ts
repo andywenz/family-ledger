@@ -62,3 +62,19 @@ export function cash(code: string, value: string | null | undefined): string {
   if (m === "—") return m;
   return m.startsWith("−") ? "−" + currencySymbol(code) + m.slice(1) : currencySymbol(code) + m;
 }
+
+/** 两位小数字符串 → 整数分值（纯字符串与整数运算，不经浮点）。 */
+export function decimalToMinor(value: string): number {
+  const negative = value.startsWith("-");
+  const [int = "0", frac = ""] = (negative ? value.slice(1) : value).split(".");
+  const minor = Number(int) * 100 + Number((frac + "00").slice(0, 2));
+  return negative ? -minor : minor;
+}
+
+const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
+/** 2026-10-05 → “10月5日 周一” */
+export function dayLabel(iso: string): string {
+  const [y = 2000, m = 1, d = 1] = iso.split("-").map(Number);
+  return `${m}月${d}日 ${WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}`;
+}
