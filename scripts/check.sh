@@ -8,4 +8,5 @@ uv run mypy backend/src
 uv run pytest -q
 pnpm --filter @family-ledger/frontend gen:api
 pnpm -r run check
+pnpm --filter @family-ledger/frontend test
 pnpm --filter @family-ledger/infra test
