@@ -78,3 +78,15 @@ export function dayLabel(iso: string): string {
   const [y = 2000, m = 1, d = 1] = iso.split("-").map(Number);
   return `${m}月${d}日 ${WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}`;
 }
+
+/** 汇率显示为“币种:美元 = X:1”中的 X：1 ÷ 美元值，保留两位小数（BigInt 整数运算，不经浮点）。
+ *  例：港币 0.128 → "7.81"；日元 0.0067 → "149.25"。 */
+export function perUsd(usdValue: string, places = 2): string {
+  const [int = "0", frac = ""] = usdValue.split(".");
+  const den = BigInt(int + frac);
+  if (den === 0n) return "—";
+  // 1 ÷ (den / 10^frac.length) = 10^frac.length / den；多算一位后四舍五入
+  const scaled = (10n ** BigInt(frac.length + places + 1)) / den;
+  const s = ((scaled + 5n) / 10n).toString().padStart(places + 1, "0");
+  return money(`${s.slice(0, -places)}.${s.slice(-places)}`);
+}

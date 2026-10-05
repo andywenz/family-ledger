@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api, type Currency, type Schemas } from "../api/client";
 import { ErrorNotice, PageHeading, useAction, useLoad, useToast } from "../components/common";
 import { useFamily } from "../components/Layout";
-import { minorToDecimal, money, today } from "../lib/format";
+import { minorToDecimal, money, today, perUsd } from "../lib/format";
 
 type Resolved = Schemas["ResolvedRates"];
 
@@ -21,7 +21,7 @@ export default function Rates() {
 
   return (
     <>
-      <PageHeading title="币种与汇率" subtitle="以美元为基准：一单位币种可兑换多少 USD。历史账目保留入账时的快照。" />
+      <PageHeading title="币种与汇率" subtitle="以美元为基准，显示为“币种:美元”，即多少单位该币种兑 1 美元。历史账目保留入账时的快照。" />
       <ErrorNotice error={action.error} />
       <div className="settings-grid">
         <section className="card">
@@ -34,7 +34,7 @@ export default function Rates() {
                 <div key={code} className="rate-row">
                   <span className="rate-symbol">{code}</span>
                   <div><strong>{fam.currencies.find((c) => c.code === code)?.name_zh ?? code}</strong><small>{r.source === "family_manual" ? `家庭修正 · 第 ${r.revision} 版` : r.source === "base" ? "基准币种" : "ECB 数据源"}</small></div>
-                  <b>{money(r.usd_value)}</b>
+                  <b className="rate-ratio" title={`1 ${code} = ${r.usd_value} USD`}><small>{fam.currencies.find((c) => c.code === code)?.name_zh ?? code}:美元 = </small>{perUsd(r.usd_value)}:1</b>
                 </div>
               ))}
               {(resolved.data.missing_currencies ?? []).map((code) => (

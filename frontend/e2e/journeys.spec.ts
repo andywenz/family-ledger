@@ -309,6 +309,14 @@ test("家庭时区：可修改并在刷新后保持", async ({ page }, info) => 
   await page.getByLabel("家庭时区").selectOption("Pacific/Auckland"); // 恢复，避免影响其他用例
   await page.getByRole("button", { name: "保存设置" }).click();
   await expect(page.getByText("设置已保存")).toBeVisible();
+
+  // 查看汇率组：显示为“币种:美元 = X:1”，保留两位小数（同一登录内检查，避免触发登录频率限制）
+  await openFamilyPage(page, `家-${project}`, "币种与汇率");
+  const ratio = page.locator(".rate-ratio");
+  await expect(ratio.filter({ hasText: /^新西兰元:/ })).toHaveText(/^新西兰元:美元 = ?[\d,]+\.\d{2}:1$/);
+  await expect(ratio.filter({ hasText: /^美元:/ })).toHaveText(/^美元:美元 = ?1\.00:1$/);
+  await noHorizontalOverflow(page);
+  if (process.env.THEME_SHOTS_DIR) await page.locator(".settings-grid").screenshot({ path: `${process.env.THEME_SHOTS_DIR}/rates-${project}.png` });
 });
 
 test("饼图中心：大额金额不压到色环（三种风格）", async ({ page }, info) => {
@@ -378,3 +386,4 @@ test("手机明细：按日期分组的清单，无需左右滑动", async ({ pa
   await item.getByRole("button").click();
   await expect(page.getByRole("dialog")).toBeVisible();
 });
+

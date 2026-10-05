@@ -357,3 +357,10 @@ html[data-theme="night"] .badge.type-receivable{--t:var(--c8)}
 html[data-theme="pop"] .badge.type-expense{--t:var(--c2)}
 html[data-theme="pop"] .badge.type-exchange{--t:var(--c8)}
 html[data-theme] .rate-missing small{color:var(--warn-ink)}
+/* 查看汇率组：“币种:美元 =”一行小字在上，比例在下（窄屏也不撑宽） */
+html[data-theme] .rate-ratio{display:flex;flex-direction:column;align-items:flex-end;flex:none;white-space:nowrap;font-variant-numeric:tabular-nums;line-height:1.2}
+html[data-theme] .rate-ratio small{font-size:11px;font-weight:600;color:var(--muted);font-family:inherit;letter-spacing:0}
+@media(max-width:650px){
+  /* 手机浏览器的日期框有约 178px 的固有宽度，两列并排会撑出横向滚动：含日期框的表单行改为单列 */
+  html[data-theme] .field-grid:has(input[type="date"]){grid-template-columns:1fr}
+}
