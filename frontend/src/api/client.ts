@@ -1,5 +1,6 @@
 // API 客户端：access token 仅存内存；refresh 走 HttpOnly cookie＋CSRF（ADR-0012）。
 // 写请求携带 Idempotency-Key；结果未知时抛出 UnknownOutcome，调用方用同一 key 查询或重试。
+import { currentLang, tr } from "../lib/i18n";
 import type { components } from "./schema";
 
 export type Schemas = components["schemas"];
@@ -26,7 +27,7 @@ export class ApiError extends Error {
 /** 写请求已发出但结果未知（网络中断／503 upstream_unknown）。不得换新 key 重试。 */
 export class UnknownOutcome extends Error {
   constructor(public key: string, public path: string) {
-    super("提交结果未知：请先查询结果，再决定是否重试");
+    super(tr("提交结果未知：请先查询结果，再决定是否重试", "The result is unknown: check whether it was saved before trying again"));
   }
 }
 
@@ -56,7 +57,7 @@ async function parse(res: Response): Promise<unknown> {
 
 function toError(status: number, body: unknown): ApiError {
   const err = (body as { error?: { code: string; message: string; details?: ApiError["details"] } })?.error;
-  return new ApiError(status, err?.code ?? "internal", err?.message ?? `请求失败（${status}）`, err?.details);
+  return new ApiError(status, err?.code ?? "internal", err?.message ?? tr(`请求失败（${status}）`, `Request failed (${status})`), err?.details);
 }
 
 export async function refreshSession(): Promise<boolean> {
@@ -87,6 +88,7 @@ export async function request<T>(method: string, path: string, body?: unknown, o
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(accessToken && opts.auth !== false ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...(key ? { "Idempotency-Key": key } : {}),
+        "X-Ledger-Lang": currentLang(), // 服务端据此返回英文错误信息
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
@@ -95,7 +97,7 @@ export async function request<T>(method: string, path: string, body?: unknown, o
     res = await send();
   } catch {
     if (write) throw new UnknownOutcome(key!, path);
-    throw new ApiError(0, "network", "网络连接失败，请稍后重试");
+    throw new ApiError(0, "network", tr("网络连接失败，请稍后重试", "Network error. Please try again."));
   }
   if (res.status === 401 && opts.auth !== false && accessToken) {
     // 同一 key 重试是安全的：服务端按回执去重
@@ -104,7 +106,7 @@ export async function request<T>(method: string, path: string, body?: unknown, o
         res = await send();
       } catch {
         if (write) throw new UnknownOutcome(key!, path);
-        throw new ApiError(0, "network", "网络连接失败，请稍后重试");
+        throw new ApiError(0, "network", tr("网络连接失败，请稍后重试", "Network error. Please try again."));
       }
     }
   }

@@ -342,6 +342,56 @@ test("饼图中心：大额金额不压到色环（三种风格）", async ({ pa
     if (process.env.THEME_SHOTS_DIR) await page.locator(".dashboard-top").screenshot({ path: `${process.env.THEME_SHOTS_DIR}/donut-${id}-${project}.png` });
   }
   await page.getByTitle("果汁色块").click();
+  // 英文界面：切换后各主要页面为英文、服务端错误也为英文、刷新后保持（同一登录内，避免触发登录频率限制）
+  await openFamilyPage(page, `家-${project}`, "分类管理");
+  await page.getByRole("button", { name: "English" }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  const dir = process.env.THEME_SHOTS_DIR;
+  const shotEn = async (name: string) => {
+    await noHorizontalOverflow(page);
+    if (dir) {
+      await page.waitForTimeout(600); // 等风格切换的颜色过渡结束再截图
+      await page.screenshot({ path: `${dir}/en-${name}-${project}.png`, fullPage: true });
+    }
+  };
+  await page.getByRole("link", { name: "Overview" }).first().click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+  await expect(page.getByText("Net spending this month")).toBeVisible();
+  await expect(page.getByText("Where the money went")).toBeVisible();
+  for (const [title, id] of [["Juicy", "juicy"], ["Night", "night"], ["Pop", "pop"]] as const) {
+    await page.getByTitle(title).click();
+    await shotEn(`dashboard-${id}`);
+  }
+  await page.getByTitle("Juicy").click();
+  await page.getByRole("link", { name: "New entry" }).first().click();
+  await expect(page.getByLabel("Amount", { exact: true })).toBeVisible();
+  await shotEn("new");
+  await page.getByRole("link", { name: "AI entry" }).first().click();
+  await expect(page.getByLabel("What did you spend today?")).toBeVisible();
+  await shotEn("ai");
+  // 二级页面：桌面在侧栏，手机在“更多”
+  const open = async (name: string) => {
+    if (project === "mobile") {
+      await page.getByRole("button", { name: "More" }).click();
+      await page.getByRole("dialog").getByRole("link", { name }).click();
+    } else {
+      await page.getByRole("link", { name }).first().click();
+    }
+  };
+  await open("Currencies & rates");
+  await expect(page.locator(".rate-ratio").first()).toContainText(" : USD = ");
+  await shotEn("rates");
+  await open("Family settings");
+  await expect(page.getByLabel("Family time zone")).toBeVisible();
+  await shotEn("settings");
+  // 服务端错误信息为英文（邀请不存在的登录名）
+  await page.getByLabel("Username").fill("no-such-user-zz");
+  await page.getByRole("button", { name: "Send invitation" }).click();
+  await expect(page.getByText("This username can’t be invited")).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Family settings" })).toBeVisible(); // 刷新后保持英文
+  await page.getByRole("button", { name: "中文" }).click();
+  await expect(page.getByRole("heading", { name: "家庭与设置" })).toBeVisible();
 });
 
 test("桌面侧栏：窗口较矮时可滚动到底部账号区", async ({ page }, info) => {
@@ -386,4 +436,5 @@ test("手机明细：按日期分组的清单，无需左右滑动", async ({ pa
   await item.getByRole("button").click();
   await expect(page.getByRole("dialog")).toBeVisible();
 });
+
 

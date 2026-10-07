@@ -1,3 +1,5 @@
+import { currentLang } from "./i18n";
+
 // 金额只处理服务端返回的十进制字符串，不做浮点运算（需求 §7）。
 
 export function money(value: string | null | undefined): string {
@@ -25,12 +27,18 @@ export function shiftMonth(month: string, delta: number): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_EN_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** 2026-10 → “2026 年 10 月”／“October 2026” */
 export function monthLabel(month: string): string {
   const [y, m] = month.split("-");
-  return `${y} 年 ${Number(m)} 月`;
+  return currentLang() === "en" ? `${MONTHS_EN_FULL[Number(m) - 1]} ${y}` : `${y} 年 ${Number(m)} 月`;
 }
 
+/** 2026-10-05 → “10 / 05”／“5 Oct”（英文按新西兰习惯日在前，避免月日混淆） */
 export function shortDate(iso: string): string {
+  if (currentLang() === "en") return `${Number(iso.slice(8, 10))} ${MONTHS_EN[Number(iso.slice(5, 7)) - 1]}`;
   return iso.slice(5).replace("-", " / ");
 }
 
@@ -72,11 +80,23 @@ export function decimalToMinor(value: string): number {
 }
 
 const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const WEEKDAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** 2026-10-05 → “10月5日 周一” */
+/** 2026-10-05 → “10月5日 周一”／“Mon 5 Oct” */
 export function dayLabel(iso: string): string {
   const [y = 2000, m = 1, d = 1] = iso.split("-").map(Number);
-  return `${m}月${d}日 ${WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}`;
+  const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return currentLang() === "en" ? `${WEEKDAYS_EN[wd]} ${d} ${MONTHS_EN[m - 1]}` : `${m}月${d}日 ${WEEKDAYS[wd]}`;
+}
+
+/** 币种名：中文用服务端的 name_zh；英文用浏览器内置的 ISO 币种名（如 New Zealand Dollar），取不到则用代码 */
+export function currencyName(code: string, nameZh?: string): string {
+  if (currentLang() !== "en") return nameZh || code;
+  try {
+    return new Intl.DisplayNames(["en"], { type: "currency" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
 }
 
 /** 汇率显示为“币种:美元 = X:1”中的 X：1 ÷ 美元值，保留两位小数（BigInt 整数运算，不经浮点）。

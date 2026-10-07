@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { tr } from "../lib/i18n";
 import { useNavigate } from "react-router";
 import { api, type Schemas } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -32,34 +33,34 @@ export default function Families() {
   }
 
   return (
-    <PlainShell title="我的家庭">
-      <PageHeading title="选择家庭" subtitle="一个账号可以加入多个家庭；每个家庭的账目彼此独立。" />
+    <PlainShell title={tr("我的家庭", "My families")}>
+      <PageHeading title={tr("选择家庭", "Choose a family")} subtitle={tr("一个账号可以加入多个家庭；每个家庭的账目彼此独立。", "One account can join several families; each family's ledger is separate.")} />
       <div className="settings-grid">
         <section className="card">
-          <div className="section-head"><h2>我的家庭</h2></div>
-          {me?.families.length === 0 && <p className="muted">还没有加入任何家庭。可以创建一个，或等待家庭管理员邀请。</p>}
+          <div className="section-head"><h2>{tr("我的家庭", "My families")}</h2></div>
+          {me?.families.length === 0 && <p className="muted">{tr("还没有加入任何家庭。可以创建一个，或等待家庭管理员邀请。", "You haven't joined a family yet. Create one, or wait for a family admin to invite you.")}</p>}
           {me?.families.map((f) => (
             <button key={f.family_id} className="member-row as-button" onClick={() => navigate(`/f/${f.family_id}`)}>
-              <span className="avatar">⌂</span><div><strong>{f.name}</strong><small>{f.role === "admin" ? "家庭管理员" : "成员"}</small></div>
+              <span className="avatar">⌂</span><div><strong>{f.name}</strong><small>{f.role === "admin" ? tr("家庭管理员", "Family admin") : tr("成员", "Member")}</small></div>
             </button>
           ))}
           <form onSubmit={submit} className="space-top">
-            <label className="field">新家庭名称<input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} required /></label>
+            <label className="field">{tr("新家庭名称", "New family name")}<input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} required /></label>
             <ErrorNotice error={create.error} />
-            <button className="button primary" disabled={create.busy || !name.trim()}>创建家庭</button>
-            <p className="tiny-note">创建者成为家庭管理员，并按初始方案生成分类目录。</p>
+            <button className="button primary" disabled={create.busy || !name.trim()}>{tr("创建家庭", "Create family")}</button>
+            <p className="tiny-note">{tr("创建者成为家庭管理员，并按初始方案生成分类目录。", "The creator becomes the family admin, and a starter set of categories is created.")}</p>
           </form>
         </section>
         <section className="card">
-          <div className="section-head"><h2>收到的邀请</h2></div>
+          <div className="section-head"><h2>{tr("收到的邀请", "Invitations")}</h2></div>
           <ErrorNotice error={invites.error ?? respond.error} />
-          {invites.data?.items.length === 0 && <p className="muted">暂无待处理的邀请。</p>}
+          {invites.data?.items.length === 0 && <p className="muted">{tr("暂无待处理的邀请。", "No pending invitations.")}</p>}
           {invites.data?.items.map((inv) => (
             <div key={inv.invitation_id} className="member-row">
-              <div><strong>{inv.family_name}</strong><small>角色：{inv.role === "admin" ? "管理员" : "成员"} · {inv.expires_at.slice(0, 10)} 前有效</small></div>
+              <div><strong>{inv.family_name}</strong><small>{tr("角色", "Role")}：{inv.role === "admin" ? tr("管理员", "Admin") : tr("成员", "Member")} · {tr(`${inv.expires_at.slice(0, 10)} 前有效`, `Valid until ${inv.expires_at.slice(0, 10)}`)}</small></div>
               <div className="row-actions">
-                <button className="button secondary small" onClick={() => void answer(inv, false)}>拒绝</button>
-                <button className="button primary small" onClick={() => void answer(inv, true)}>加入</button>
+                <button className="button secondary small" onClick={() => void answer(inv, false)}>{tr("拒绝", "Decline")}</button>
+                <button className="button primary small" onClick={() => void answer(inv, true)}>{tr("加入", "Join")}</button>
               </div>
             </div>
           ))}

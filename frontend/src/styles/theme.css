@@ -364,3 +364,27 @@ html[data-theme] .rate-ratio small{font-size:11px;font-weight:600;color:var(--mu
   /* 手机浏览器的日期框有约 178px 的固有宽度，两列并排会撑出横向滚动：含日期框的表单行改为单列 */
   html[data-theme] .field-grid:has(input[type="date"]){grid-template-columns:1fr}
 }
+
+/* 语言切换：与风格切换同一套胶囊样式；文字本身很短，手机上也保留 */
+.lang-switch button{min-width:38px;justify-content:center;letter-spacing:.02em}
+.topbar-right .lang-switch,.auth-theme .lang-switch{margin-right:8px}
+.auth-theme{display:flex;align-items:center}
+@media(max-width:650px){
+  /* 顶栏放了语言＋风格两个切换：面包屑可收缩并以省略号截断，切换按钮保持完整 */
+  html[data-theme] .topbar{gap:8px}
+  html[data-theme] .topbar .breadcrumb{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  html[data-theme] .topbar-right{flex:none;gap:6px}
+  .topbar-right .lang-switch{margin-right:0}
+  .lang-switch button{min-width:34px;padding:5px 6px}
+  .theme-switch button{min-width:36px;padding:5px 6px}
+}
+@media(max-width:650px){
+  /* 本地开发标签在手机上只留圆点（完整说明见悬停提示），给两个切换按钮让出位置 */
+  .local-tag .local-tag-text{display:none}
+  html[data-theme] .topbar .local-tag{padding:6px}
+}
+
+/* 手机明细的日期标题跟随表头文字色（手账波普为黑底黄字，原先被标题通用色改成黑字而看不见） */
+html[data-theme] .entry-day-head,html[data-theme] .entry-day-head span{color:var(--th-ink)}
+/* 英文品牌名较长：保持一行 */
+html[lang="en"] .sidebar .brand span{white-space:nowrap;font-size:19px}

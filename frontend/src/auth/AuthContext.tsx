@@ -64,6 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): Ctx {
   const ctx = useContext(AuthCtx);
-  if (!ctx) throw new Error("AuthProvider 缺失");
+  if (!ctx) throw new Error("AuthProvider missing");
   return ctx;
 }

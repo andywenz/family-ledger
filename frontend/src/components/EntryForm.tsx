@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { tr } from "../lib/i18n";
 import { api, type Entry, type FxPreview } from "../api/client";
-import { money, today } from "../lib/format";
+import { currencyName, money, today } from "../lib/format";
 import { uploadPhoto } from "../lib/upload";
-import { ENTRY_TYPES, KIND_FOR_TYPE, METHODS, methodRule } from "../lib/labels";
+import { entryTypes, KIND_FOR_TYPE, methodRule, methods } from "../lib/labels";
 import { ErrorNotice, UnknownPanel, useAction } from "./common";
 import { Icon } from "./Icon";
 import { useFamily } from "./Layout";
@@ -45,7 +46,7 @@ export function EntryForm({ mode, entry, onSaved, onCancel }: Props) {
   );
   const [note, setNote] = useState(mode === "edit" ? entry!.note : "");
   const [uploads, setUploads] = useState<Upload[]>(
-    mode === "edit" ? entry!.attachments.map((a) => ({ name: "已附照片", status: "ready", id: a.attachment_id })) : [],
+    mode === "edit" ? entry!.attachments.map((a) => ({ name: tr("已附照片", "Attached photo"), status: "ready", id: a.attachment_id })) : [],
   );
   const [preview, setPreview] = useState<FxPreview | null>(null);
   const action = useAction<Entry>(fam.fid);
@@ -135,97 +136,97 @@ export function EntryForm({ mode, entry, onSaved, onCancel }: Props) {
     <form onSubmit={submit} className="entry-form" noValidate>
       {mode === "refund" && (
         <p className="tiny-note">
-          关联原消费：{entry!.business_date} · {entry!.category.parent_name}／{entry!.category.leaf_name} · {entry!.currency} {money(entry!.amount)}
-          <br />尚可退款 {entry!.currency} {money(entry!.refundable_amount ?? "0")}；退款沿用原消费的分类、币种与方式。
+          {tr("关联原消费：", "Original expense: ")}{entry!.business_date} · {entry!.category.parent_name}／{entry!.category.leaf_name} · {entry!.currency} {money(entry!.amount)}
+          <br />{tr(`尚可退款 ${entry!.currency} ${money(entry!.refundable_amount ?? "0")}；退款沿用原消费的分类、币种与方式。`, `Up to ${entry!.currency} ${money(entry!.refundable_amount ?? "0")} can be refunded. The refund uses the original expense’s category, currency and method.`)}
         </p>
       )}
-      {mode === "edit" && <p className="tiny-note">修改同一笔记录，不会新增账目。原录入人：{entry!.created_by_display}</p>}
+      {mode === "edit" && <p className="tiny-note">{tr("修改同一笔记录，不会新增账目。原录入人：", "This edits the same entry; no new entry is created. Entered by: ")}{entry!.created_by_display}</p>}
       <div className="field-grid">
         <label className="field">
-          记录类型
+          {tr("记录类型", "Type")}
           <select value={type} disabled={locked} onChange={(e) => setType(e.target.value)}>
-            {ENTRY_TYPES.filter(([v]) => v !== "refund" || locked).map(([v, l]) => (
+            {entryTypes().filter(([v]) => v !== "refund" || locked).map(([v, l]) => (
               <option key={v} value={v}>{l}</option>
             ))}
           </select>
         </label>
         <label className="field">
-          记账日期
+          {tr("记账日期", "Date")}
           <input type="date" value={date} required onChange={(e) => setDate(e.target.value)} />
         </label>
         <label className="field">
-          币种
+          {tr("币种", "Currency")}
           <select value={currency} disabled={locked} onChange={(e) => setCurrency(e.target.value)}>
-            {fam.currencies.map((c) => <option key={c.code} value={c.code} title={c.name_zh}>{c.code}</option>)}
+            {fam.currencies.map((c) => <option key={c.code} value={c.code} title={currencyName(c.code, c.name_zh)}>{c.code}</option>)}
           </select>
         </label>
         <label className="field">
-          原始金额
+          {tr("原始金额", "Amount")}
           <input inputMode="decimal" value={amount} placeholder="0.00" required aria-invalid={amount !== "" && !amountValid}
             onChange={(e) => setAmount(e.target.value.trim())} />
         </label>
         <label className="field">
-          一级分类
+          {tr("一级分类", "Category")}
           <select value={parent} disabled={locked} onChange={(e) => setParent(e.target.value)}>
             {locked && <option value={parent}>{entry!.category.parent_name}</option>}
-            {!locked && groups.map((g) => <option key={g.category_id} value={g.category_id}>{g.name}{g.status !== "active" ? "（已停用）" : ""}</option>)}
+            {!locked && groups.map((g) => <option key={g.category_id} value={g.category_id}>{g.name}{g.status !== "active" ? tr("（已停用）", " (disabled)") : ""}</option>)}
           </select>
         </label>
         <label className="field">
-          二级分类
+          {tr("二级分类", "Subcategory")}
           <select value={leaf} disabled={locked} onChange={(e) => setLeaf(e.target.value)}>
             {locked && <option value={leaf}>{entry!.category.leaf_name}</option>}
-            {!locked && leaves.map((c) => <option key={c.category_id} value={c.category_id}>{c.name}{c.status !== "active" ? "（已停用）" : ""}</option>)}
+            {!locked && leaves.map((c) => <option key={c.category_id} value={c.category_id}>{c.name}{c.status !== "active" ? tr("（已停用）", " (disabled)") : ""}</option>)}
           </select>
         </label>
         {rule !== "none" && (
           <label className="field">
-            {type === "income" ? "收款方式（可选）" : "消费方式"}
+            {type === "income" ? tr("收款方式（可选）", "Received via (optional)") : tr("消费方式", "Payment method")}
             <select value={method} disabled={locked} onChange={(e) => setMethod(e.target.value)}>
-              {rule === "optional" && <option value="">未指定</option>}
-              {METHODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              {rule === "optional" && <option value="">{tr("未指定", "Not specified")}</option>}
+              {methods().map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </label>
         )}
       </div>
-      {rule === "none" && <p className="tiny-note">该类型不计入收入或支出统计，不需要消费方式。</p>}
+      {rule === "none" && <p className="tiny-note">{tr("该类型不计入收入或支出统计，不需要消费方式。", "This type isn’t counted in income or spending, so no payment method is needed.")}</p>}
       <label className="field">
-        备注
-        <textarea value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="例如：周末采购，买了水果和牛奶" />
+        {tr("备注", "Note")}
+        <textarea value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder={tr("例如：周末采购，买了水果和牛奶", "e.g. Weekend shop: fruit and milk")} />
       </label>
       <div className="field">
-        照片凭证（可选，最多 3 张）
+        {tr("照片凭证（可选，最多 3 张）", "Receipt photos (optional, up to 3)")}
         <div className="upload-list">
           {uploads.map((u, i) => (
             <span key={i} className={`upload-chip ${u.status}`}>
-              {u.name} · {u.status === "ready" ? "已通过" : u.status === "uploading" ? "上传中" : u.reason}
-              <button type="button" aria-label="移除照片" onClick={() => setUploads((x) => x.filter((y) => y !== u))}>×</button>
+              {u.name} · {u.status === "ready" ? tr("已通过", "Ready") : u.status === "uploading" ? tr("上传中", "Uploading") : u.reason}
+              <button type="button" aria-label={tr("移除照片", "Remove photo")} onClick={() => setUploads((x) => x.filter((y) => y !== u))}>×</button>
             </span>
           ))}
           {uploads.length < 3 && (
             <label className="upload-button">
-              <Icon name="upload" /> 添加照片
+              <Icon name="upload" /> {tr("添加照片", "Add photo")}
               <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void addPhoto(f); e.target.value = ""; }} />
             </label>
           )}
         </div>
       </div>
       <div className="conversion-strip" aria-live="polite">
-        <div>合 NZD<strong>{ok ? `$ ${money(ok.display_amounts.nzd)}` : "—"}</strong></div>
-        <div>合 CNY<strong>{ok ? `¥ ${money(ok.display_amounts.cny)}` : "—"}</strong></div>
-        <div>汇率日期<strong className="small-strong">{ok ? ok.snapshot.effective_date : pending ? "待补汇率" : "—"}</strong></div>
+        <div>{tr("合 NZD", "≈ NZD")}<strong>{ok ? `$ ${money(ok.display_amounts.nzd)}` : "—"}</strong></div>
+        <div>{tr("合 CNY", "≈ CNY")}<strong>{ok ? `¥ ${money(ok.display_amounts.cny)}` : "—"}</strong></div>
+        <div>{tr("汇率日期", "Rate date")}<strong className="small-strong">{ok ? ok.snapshot.effective_date : pending ? tr("待补汇率", "Rate needed") : "—"}</strong></div>
       </div>
       {ok && "snapshot_changed" in ok && mode === "edit" && (
-        <p className="tiny-note">{ok.snapshot_changed ? "日期或币种已改变：将使用新的汇率快照。" : "沿用原汇率快照。"}</p>
+        <p className="tiny-note">{ok.snapshot_changed ? tr("日期或币种已改变：将使用新的汇率快照。", "Date or currency changed: a new exchange-rate snapshot will be used.") : tr("沿用原汇率快照。", "Keeps the original exchange-rate snapshot.")}</p>
       )}
-      {pending && <p className="tiny-note warn">缺少 {pending.missing_currencies.join("、")} 在该日期附近的汇率，请家庭管理员在「币种与汇率」补录后再保存。</p>}
+      {pending && <p className="tiny-note warn">{tr(`缺少 ${pending.missing_currencies.join("、")} 在该日期附近的汇率，请家庭管理员在「币种与汇率」补录后再保存。`, `No ${pending.missing_currencies.join(", ")} rate near this date. Ask a family admin to add it under Currencies & rates, then save.`)}</p>}
       <ErrorNotice error={action.error} />
       <UnknownPanel action={action as never} onCommitted={onCancel} onRetry={() => void save()} />
       <div className="form-actions">
-        <button type="button" className="button secondary" onClick={onCancel}>取消</button>
+        <button type="button" className="button secondary" onClick={onCancel}>{tr("取消", "Cancel")}</button>
         <button className="button primary" type="submit" disabled={action.busy || !amountValid || (!locked && !leaf) || (rule === "required" && !method) || uploads.some((u) => u.status === "uploading")}>
           <Icon name="check" />
-          {mode === "edit" ? "保存修改" : mode === "refund" ? "保存退款" : "保存这笔记录"}
+          {mode === "edit" ? tr("保存修改", "Save changes") : mode === "refund" ? tr("保存退款", "Save refund") : tr("保存这笔记录", "Save entry")}
         </button>
       </div>
     </form>

@@ -25,6 +25,7 @@ from ledger.settings import Settings
 
 from . import contract
 from .errors import error_body, from_domain
+from .messages_en import to_english
 
 log = logging.getLogger("ledger.http")
 MAX_BODY = 64 * 1024
@@ -191,6 +192,27 @@ def _response(
 
 
 def handle_event(event: dict[str, Any], runtime: Runtime) -> dict[str, Any]:
+    out = _handle_event(event, runtime)
+    lang = {k.lower(): v for k, v in (event.get("headers") or {}).items()}.get("x-ledger-lang", "")
+    if lang == "en" and out.get("statusCode", 200) >= 400 and out.get("body"):
+        out["body"] = _english_error(out["body"])
+    return out
+
+
+def _english_error(body: str) -> str:
+    """英文界面：把错误体的 message 换成英文（错误码不变）；解析失败时原样返回。"""
+    try:
+        data = json.loads(body)
+        err = data.get("error")
+        if isinstance(err, dict) and isinstance(err.get("message"), str):
+            err["message"] = to_english(err["message"])
+            return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    except ValueError:
+        pass
+    return body
+
+
+def _handle_event(event: dict[str, Any], runtime: Runtime) -> dict[str, Any]:
     started = time.monotonic()
     rc = event.get("requestContext", {})
     request_id = rc.get("requestId") or secrets.token_hex(8)

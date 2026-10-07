@@ -21,13 +21,20 @@ import "./styles/prototype.css";
 import "./styles/app.css";
 import "./styles/theme.css";
 import { applyTheme, getTheme } from "./lib/theme";
+import { LangKeyed, LangProvider, applyLang, currentLang, tr } from "./lib/i18n";
 
 applyTheme(getTheme()); // 渲染前应用，避免闪现旧风格
+applyLang(currentLang());
+
+function NotFound() {
+  return <PlainShell title={tr("未找到", "Not found")}><p className="muted">{tr("页面不存在。", "This page does not exist.")}</p></PlainShell>;
+}
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <LangKeyed>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/login/new-password" element={<NewPassword />} />
@@ -45,8 +52,9 @@ function App() {
             <Route path="rates" element={<Rates />} />
             <Route path="settings" element={<FamilySettings />} />
           </Route>
-          <Route path="*" element={<RequireAuth><PlainShell title="未找到"><p className="muted">页面不存在。</p></PlainShell></RequireAuth>} />
+          <Route path="*" element={<RequireAuth><NotFound /></RequireAuth>} />
         </Routes>
+        </LangKeyed>
       </AuthProvider>
     </BrowserRouter>
   );
@@ -54,6 +62,8 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <LangProvider>
+      <App />
+    </LangProvider>
   </StrictMode>,
 );

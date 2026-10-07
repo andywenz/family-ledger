@@ -1,8 +1,8 @@
 /** 界面风格：每个浏览器各自记住（个人偏好，不存服务器）。存储不可用时回到默认风格。 */
 export const THEMES = [
-  { id: "juicy", label: "果汁色块", icon: "🍑" },
-  { id: "night", label: "夜光", icon: "🌙" },
-  { id: "pop", label: "手账波普", icon: "🎨" },
+  { id: "juicy", label: "果汁色块", labelEn: "Juicy", icon: "🍑" },
+  { id: "night", label: "夜光", labelEn: "Night", icon: "🌙" },
+  { id: "pop", label: "手账波普", labelEn: "Pop", icon: "🎨" },
 ] as const;
 export type ThemeId = (typeof THEMES)[number]["id"];
 const KEY = "ledger:theme";

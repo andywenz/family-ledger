@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { tr } from "../lib/i18n";
 import { ApiError, UnknownOutcome, api, newKey } from "../api/client";
 import { Icon } from "./Icon";
 
@@ -15,10 +16,11 @@ export function PageHeading({ title, subtitle, actions }: { eyebrow?: string; ti
   );
 }
 
-const FIELD_LABEL: Record<string, string> = {
-  amount: "金额", business_date: "日期", payment_method: "方式", leaf_category_id: "分类",
-  currency: "币种", note: "备注", refund_of: "原消费", name: "名称",
-};
+const fieldLabels = (): Record<string, string> => ({
+  amount: tr("金额", "Amount"), business_date: tr("日期", "Date"), payment_method: tr("方式", "Payment method"),
+  leaf_category_id: tr("分类", "Category"), currency: tr("币种", "Currency"), note: tr("备注", "Note"),
+  refund_of: tr("原消费", "Original expense"), name: tr("名称", "Name"),
+});
 
 /** 统一错误展示：显示服务端中文信息与字段，不展示他人对象内容。 */
 export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
@@ -35,15 +37,15 @@ export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () =
           <ul>
             {fields.map((f) => (
               <li key={f.field + f.code}>
-                {FIELD_LABEL[f.field] ?? f.field}：{f.code}
+                {fieldLabels()[f.field] ?? f.field}：{f.code}
               </li>
             ))}
           </ul>
         )}
-        {e.code === "version_conflict" && <p>这条记录已被他人修改，请刷新后再改。</p>}
+        {e.code === "version_conflict" && <p>{tr("这条记录已被他人修改，请刷新后再改。", "Someone else changed this record. Refresh and try again.")}</p>}
         {onRetry && (
           <button type="button" className="text-button" onClick={onRetry}>
-            重新加载
+            {tr("重新加载", "Reload")}
           </button>
         )}
       </div>
@@ -103,15 +105,15 @@ export function UnknownPanel({ action, onCommitted, onRetry }: { action: ReturnT
     <div className="notice unknown-notice" role="alert">
       <Icon name="info" />
       <div>
-        <strong>网络中断，暂时无法确认是否已保存。</strong>
-        <p>请先查询结果；未保存时再重试，系统不会重复记账。</p>
+        <strong>{tr("网络中断，暂时无法确认是否已保存。", "The connection dropped, so we can't confirm whether it was saved.")}</strong>
+        <p>{tr("请先查询结果；未保存时再重试，系统不会重复记账。", "Check the result first. If it wasn't saved, retry — it won't be recorded twice.")}</p>
         <div className="form-actions compact">
           <button type="button" className="button secondary" onClick={async () => {
             const r = await action.check();
             if (r === "committed") onCommitted();
-            else setMsg(r === "not_committed" ? "尚未保存，可以重试。" : "仍无法确认，请稍后再查。");
-          }}>查询结果</button>
-          <button type="button" className="button primary" onClick={onRetry}>用同一请求重试</button>
+            else setMsg(r === "not_committed" ? tr("尚未保存，可以重试。", "Not saved yet. You can retry.") : tr("仍无法确认，请稍后再查。", "Still can't confirm. Check again shortly."));
+          }}>{tr("查询结果", "Check result")}</button>
+          <button type="button" className="button primary" onClick={onRetry}>{tr("用同一请求重试", "Retry the same request")}</button>
         </div>
         {msg && <p>{msg}</p>}
       </div>
@@ -167,7 +169,7 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
     <dialog ref={ref} id="record-dialog" className={wide ? "wide" : ""} aria-label={title} onCancel={(e) => { e.preventDefault(); onClose(); }}>
       <div className="dialog-heading">
         <h2>{title}</h2>
-        <button type="button" className="icon-button" aria-label="关闭" onClick={onClose}>×</button>
+        <button type="button" className="icon-button" aria-label={tr("关闭", "Close")} onClick={onClose}>×</button>
       </div>
       {children}
     </dialog>
