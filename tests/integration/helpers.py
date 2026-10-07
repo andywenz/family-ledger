@@ -70,3 +70,11 @@ def income(w: World, amount: str, *, date: str = "2026-10-02") -> dict[str, Any]
             leaf_category_id="income-01-01",
         ),
     )
+
+
+def ensure_currency(w: World, code: str) -> None:
+    """确保家庭已启用该币种（新家庭默认启用全部全局币种，可能已启用）。"""
+    from ledger.application import rates
+
+    if code not in {c["code"] for c in rates.list_family_currencies(w.ctx, w.admin, w.fid)}:
+        rates.enable_family_currency(w.ctx, w.admin, w.fid, new_key(), code)

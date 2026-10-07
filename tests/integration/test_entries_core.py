@@ -9,7 +9,7 @@ from ledger.domain.entries import EntryInput
 from ledger.domain.errors import DomainError
 
 from .conftest import World, new_key, raw_items
-from .helpers import expense, income, refund
+from .helpers import ensure_currency, expense, income, refund
 
 
 def test_acc01_single_entry_with_receipt_and_locator(world: World) -> None:
@@ -44,7 +44,7 @@ def test_fx02_missing_rate_rejects_without_writing(world: World) -> None:
     w = world
     from ledger.application import rates
 
-    rates.enable_family_currency(w.ctx, w.admin, w.fid, new_key(), "FJD")
+    ensure_currency(w, "FJD")
     with pytest.raises(DomainError) as ex:
         expense(w, currency="FJD", amount="10")
     assert ex.value.code == "rate_pending"

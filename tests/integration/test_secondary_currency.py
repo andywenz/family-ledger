@@ -9,7 +9,7 @@ from ledger.domain.errors import ValidationFailed
 from ledger.domain.money import CurrencyMeta
 
 from .conftest import World, new_key
-from .helpers import expense
+from .helpers import ensure_currency, expense
 
 MONTH = "2026-10"
 
@@ -65,7 +65,7 @@ def test_none_hides_secondary(world: World) -> None:
     assert _set(w, "CNY")["secondary_currency"] == "CNY"  # 可以再开回来
 
 
-@pytest.mark.parametrize("code", ["NZD", "JPY"])
+@pytest.mark.parametrize("code", ["NZD", "QQQ"])  # 主币种；未启用（不存在）的币种
 def test_rejects_primary_and_not_enabled(world: World, code: str) -> None:
     with pytest.raises(ValidationFailed):
         _set(world, code)
@@ -76,7 +76,7 @@ def test_missing_rate_is_counted_not_zero(world: World) -> None:
     w = world
     if "XTS" not in {c["code"] for c in rates.list_global_currencies(w.ctx, w.admin)}:
         rates.create_global_currency(w.ctx, w.admin, new_key(), CurrencyMeta("XTS", 2, "测试币"))
-    rates.enable_family_currency(w.ctx, w.admin, w.fid, new_key(), "XTS")
+    ensure_currency(w, "XTS")
     expense(w, amount="100")
     _set(w, "XTS")
     sec = entries.dashboard(w.ctx, w.admin, w.fid, MONTH)["secondary"]

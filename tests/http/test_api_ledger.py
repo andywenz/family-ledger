@@ -209,8 +209,11 @@ def test_categories_and_rates_via_api(family: dict[str, Any]) -> None:
     assert status == 200 and rates["effective_date"] == "2026-10-02"
     _, cur = member.get("/currencies")
     assert {c["code"] for c in cur["items"]} >= {"NZD", "CNY", "USD", "AUD", "EUR"}
-    status, _ = admin.post(f"/families/{fid}/currencies", {"code": "FJD"})
-    assert status == 201
+    # 新家庭默认启用全部全局币种；FJD 尚未启用时才需要启用
+    _, enabled = member.get(f"/families/{fid}/currencies")
+    if "FJD" not in {c["code"] for c in enabled["items"]}:
+        status, _ = admin.post(f"/families/{fid}/currencies", {"code": "FJD"})
+        assert status == 201
     status, err = member.post(
         f"/families/{fid}/entries",
         {

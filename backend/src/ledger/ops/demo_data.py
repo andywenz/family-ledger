@@ -3,7 +3,9 @@
   AWS_PROFILE=<目标账户> AWS_DEFAULT_REGION=ap-southeast-2 \\
   LEDGER_TABLE=<TableName> LEDGER_DELETION_TABLE=<JournalTableName> \\
   uv run python -m ledger.ops.demo_data --account <账户 ID> --login <登录名> --family <家庭名> \\
-      --start 2026-07-06 --end 2026-10-05 [--dry-run]
+      --start 2026-07-06 --end 2026-10-05 [--lang en] [--dry-run]
+
+- --lang en：先把该家庭的初始分类改为英文，账目备注也用英文（见 demo_en.py）。
 
 - 固定随机种子：同一参数生成相同数据；动作 ID 确定性派生，重复执行不会重复入账。
 - 走与网站相同的 create_entry（校验、分类、汇率快照、审计、幂等），不直接写表。
@@ -392,9 +394,14 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--start", type=dt.date.fromisoformat, required=True)
     ap.add_argument("--end", type=dt.date.fromisoformat, required=True)
     ap.add_argument("--account", help="生产：凭证账户必须等于此 ID")
+    ap.add_argument("--lang", choices=("zh", "en"), default="zh", help="en：分类与备注用英文")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args(argv)
     entries = generate(a.start, a.end)
+    if a.lang == "en":
+        from ledger.ops.demo_en import localize
+
+        entries = localize(entries)
     print(json.dumps(summary(entries), ensure_ascii=False, indent=1))
     if a.dry_run:
         print(f"共 {len(entries)} 笔；演算模式未写入。")
@@ -409,6 +416,10 @@ def main(argv: list[str] | None = None) -> None:
             raise SystemExit("生产环境必须提供与当前凭证一致的 --account")
     ctx = _store_ctx(local)
     actor, fid = _actor_and_family(ctx, a.login, a.family)
+    if a.lang == "en":
+        from ledger.ops.demo_en import rename_categories
+
+        print(f"分类改为英文：{rename_categories(ctx, actor, fid)} 个")
     print(apply(ctx, actor, fid, entries))
 
 

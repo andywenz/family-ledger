@@ -45,3 +45,38 @@ def test_apply_writes_once_with_valid_refunds(world: World) -> None:
     assert written > 20 and again.get("新建", 0) == 0 and again["重复执行命中"] == written
     rows = repo.month_entries(w.ctx, w.fid, "2026-09") + repo.month_entries(w.ctx, w.fid, "2026-10")
     assert len(rows) == written
+
+
+def test_english_demo_has_no_chinese_and_renames_categories(world: World) -> None:
+    """--lang en：分类全部改为英文（可重复执行），账目分类与备注不含中文，写入成功。"""
+    import json
+    import re
+    from pathlib import Path
+
+    from ledger.ops import demo_en
+
+    cjk = re.compile(r"[一-鿿]")
+    # 初始分类都有英文名，且符合 1–24 字符、同级不重名
+    seed = json.loads(
+        (Path(__file__).resolve().parents[2] / "seed" / "categories.json").read_text()
+    )
+    for g in seed["categories"]:
+        names = [
+            demo_en.LEAF_EN.get((g["name"], c["name"])) or demo_en.CATEGORY_EN[c["name"]]
+            for c in g["children"]
+        ]
+        assert len(set(names)) == len(names) and all(1 <= len(n) <= 24 for n in names)
+        assert 1 <= len(demo_en.CATEGORY_EN[g["name"]]) <= 24
+    entries = demo_en.localize(demo_data.generate(START, END))
+    assert not [e for e in entries if cjk.search(e.note + e.parent + e.leaf)]
+
+    w = world
+    assert demo_en.rename_categories(w.ctx, w.admin, w.fid) > 60
+    assert demo_en.rename_categories(w.ctx, w.admin, w.fid) == 0  # 重复执行不再改名
+    assert not [c for c in repo.catalog(w.ctx, w.fid).by_id.values() if cjk.search(c.name)]
+    stats = demo_data.apply(
+        w.ctx, w.admin, w.fid, [e for e in entries if e.day >= dt.date(2026, 9, 21)]
+    )
+    assert stats.get("新建", 0) > 20
+    rows = repo.month_entries(w.ctx, w.fid, "2026-10")
+    assert rows and not [r for r in rows if cjk.search(r.note)]

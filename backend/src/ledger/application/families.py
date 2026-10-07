@@ -20,6 +20,7 @@ from .guard import guard_actor, guard_member, load_membership, load_profile, mem
 from .repo import global_currencies
 from .users import user_id_by_login
 
+# 系统必须具备的最少币种；新家庭启用全部全局币种（与已有家庭一致，新增币种后新家庭自动包含）
 INITIAL_CURRENCIES = ("NZD", "CNY", "USD", "AUD", "EUR")
 INVITE_DAYS = 7
 
@@ -81,8 +82,6 @@ def create_family(
     if not 1 <= len(name) <= 40:
         raise ValidationFailed("家庭名称需为 1–40 个字符")
     _check_tz(timezone)
-    if default_currency not in INITIAL_CURRENCIES:
-        raise ValidationFailed("默认币种必须是已启用币种")
     if default_payment_method not in PAYMENT_METHODS:
         raise ValidationFailed("默认消费方式无效")
     body = {
@@ -98,6 +97,8 @@ def create_family(
         missing = [c for c in INITIAL_CURRENCIES if c not in meta_currencies]
         if missing:
             raise DomainError(f"全局币种未初始化：{missing}", code="internal")
+        if default_currency not in meta_currencies:
+            raise ValidationFailed("默认币种必须是已启用币种")
         fid = ctx.ids()
         now = keys.ts(ctx.clock())
         pk = keys.family(fid)
@@ -151,7 +152,7 @@ def create_family(
         )
         for c in load_template():
             tx.put_new(category_item(fid, c))
-        for code in INITIAL_CURRENCIES:
+        for code in sorted(meta_currencies):
             tx.put_new(
                 {
                     "PK": pk,
