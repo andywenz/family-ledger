@@ -3185,6 +3185,10 @@ components:
                 usd_amount: { $ref: "#/components/schemas/Decimal", description: AWS 用量（USD，抵扣额度之前；amount 由此换算） }
                 credits_usd: { $ref: "#/components/schemas/Decimal", description: 已用抵扣额度与退款（USD，≤ 0）；实付 = usd_amount + credits_usd }
                 untagged_usd: { $ref: "#/components/schemas/Decimal", description: 其中未打 Project 标签的部分（USD） }
+                untagged_by_service:
+                  type: object
+                  description: 未打标签用量按 AWS 服务拆分（USD，降序）；如 Cost Explorer 自身的请求费、评估时直接调用基础模型的 Bedrock 费用
+                  additionalProperties: { $ref: "#/components/schemas/Decimal" }
     Alert:
       type: object
       required: [alert_id, month, threshold_percent, basis, triggered_at, delivery]

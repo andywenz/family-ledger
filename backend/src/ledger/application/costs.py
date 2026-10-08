@@ -112,7 +112,11 @@ def get_costs(ctx: AppContext, actor: Actor, month: str | None = None) -> dict[s
             "currency": bill["currency"],
             "as_of": bill["as_of"],
             "tag_coverage": bill.get("tag_coverage", "unknown"),
-            **{k: bill[k] for k in ("usd_amount", "untagged_usd", "credits_usd") if bill.get(k)},
+            **{
+                k: bill[k]
+                for k in ("usd_amount", "untagged_usd", "credits_usd", "untagged_by_service")
+                if bill.get(k)
+            },
         }
     return out
 
@@ -128,6 +132,7 @@ def record_bill(
     usd_amount: str | None = None,
     untagged_usd: str | None = None,
     credits_usd: str | None = None,
+    untagged_by_service: dict[str, str] | None = None,
 ) -> None:
     """账单同步（每日一次，D5 由 Budgets／Cost Explorer 任务写入）。不高频调用付费 API。"""
     tx = Tx(ctx.store.table)
@@ -143,6 +148,7 @@ def record_bill(
             **({"usd_amount": usd_amount} if usd_amount is not None else {}),
             **({"untagged_usd": untagged_usd} if untagged_usd is not None else {}),
             **({"credits_usd": credits_usd} if credits_usd is not None else {}),
+            **({"untagged_by_service": untagged_by_service} if untagged_by_service else {}),
         }
     )
     ctx.store.commit(tx)
@@ -174,6 +180,11 @@ def sync_bill(ctx: AppContext, client: Any, now: datetime | None = None) -> dict
         usd_amount=_q2(usd),
         untagged_usd=_q2(cost.untagged),
         credits_usd=_q2(cost.credits),
+        untagged_by_service={
+            k: _q2(v)
+            for k, v in sorted(cost.untagged_by_service.items(), key=lambda kv: -kv[1])
+            if v >= Decimal("0.005")
+        },
     )
     return {"month": month, "usd": _q2(usd), "coverage": coverage}
 

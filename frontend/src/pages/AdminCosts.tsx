@@ -33,6 +33,7 @@ export default function AdminCosts() {
                 <div className="budget-number">{c.billed.currency} {money(c.billed.amount)}</div>
                 <p className="tiny-note">
                   {c.billed.usd_amount && <>{tr("AWS 用量", "AWS usage")} USD {money(c.billed.usd_amount)}{tr("（抵扣额度之前）", " (before credits)")}{c.billed.untagged_usd && c.billed.untagged_usd !== "0.00" && <>{tr(`，其中 USD ${money(c.billed.untagged_usd)} 未打项目标签`, `, of which USD ${money(c.billed.untagged_usd)} is untagged`)}</>}<br /></>}
+                  {c.billed.untagged_by_service && <>{tr("未打标签构成：", "Untagged by service: ")}{Object.entries(c.billed.untagged_by_service).map(([k, v]) => `${k} ${money(v)}`).join(tr("，", ", "))}<br /></>}
                   {c.billed.usd_amount && c.billed.credits_usd && c.billed.credits_usd !== "0.00" && <>{tr("已用抵扣额度", "Credits applied")} USD {money(c.billed.credits_usd)}{tr("，实付", "; paid")} USD {money(minorToDecimal(decimalToMinor(c.billed.usd_amount) + decimalToMinor(c.billed.credits_usd)))}<br /></>}
                   {tr("同步于", "Synced")} {c.billed.as_of.slice(0, 10)} · {tr("标签覆盖：", "Tag coverage: ")}{c.billed.tag_coverage === "complete" ? tr("完整", "complete") : c.billed.tag_coverage === "partial" ? tr("部分", "partial") : tr("未知", "unknown")}
                 </p>

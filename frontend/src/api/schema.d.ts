@@ -1815,6 +1815,10 @@ export interface components {
                 credits_usd?: components["schemas"]["Decimal"];
                 /** @description 其中未打 Project 标签的部分（USD） */
                 untagged_usd?: components["schemas"]["Decimal"];
+                /** @description 未打标签用量按 AWS 服务拆分（USD，降序）；如 Cost Explorer 自身的请求费、评估时直接调用基础模型的 Bedrock 费用 */
+                untagged_by_service?: {
+                    [key: string]: components["schemas"]["Decimal"];
+                };
             };
         };
         Alert: {
