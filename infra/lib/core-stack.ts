@@ -4,7 +4,7 @@ import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps, Tags } from
 import { HttpApi, HttpMethod, CorsHttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { CfnBudget } from "aws-cdk-lib/aws-budgets";
-import type { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
+import { Certificate, type ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import {
   AllowedMethods, CachePolicy, Distribution, Function as CfFunction, FunctionCode, FunctionEventType, OriginRequestPolicy, ResponseHeadersPolicy, ViewerProtocolPolicy,
 } from "aws-cdk-lib/aws-cloudfront";
@@ -36,6 +36,7 @@ export class CoreStack extends Stack {
   constructor(scope: Construct, id: string, props: CoreStackProps) {
     super(scope, id, props);
     const cfg = props.config;
+    const certificate = props.certificate ?? (cfg.siteCertificateArn ? Certificate.fromCertificateArn(this, "SiteCertRef", cfg.siteCertificateArn) : undefined);
     Tags.of(this).add("Project", "family-ledger");
     Tags.of(this).add("Environment", cfg.envName);
     const manifest = JSON.parse(fs.readFileSync(cfg.artifactManifest, "utf-8")) as { sha256: string; commit: string };
@@ -279,8 +280,8 @@ export class CoreStack extends Stack {
         },
       },
       defaultRootObject: "index.html",
-      domainNames: cfg.siteDomain && props.certificate ? [cfg.siteDomain] : undefined,
-      certificate: props.certificate,
+      domainNames: cfg.siteDomain && certificate ? [cfg.siteDomain] : undefined,
+      certificate,
     });
 
     // ── 告警与预算（超额只通知，不停服） ──

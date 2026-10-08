@@ -1,5 +1,5 @@
 # 部署：手动触发；只部署 CI 已检查并上传的制品（不本地重建），部署后读回版本（ISE-027；OPS-08）。
-# 需要：GitHub environment "production"（必需审批人）、仓库变量 AWS_DEPLOY_ROLE_ARN／AWS_ACCOUNT_ID／SITE_DOMAIN。
+# 需要：GitHub environment "production"（必需审批人）、仓库变量 AWS_DEPLOY_ROLE_ARN／AWS_ACCOUNT_ID／SITE_DOMAIN／SITE_CERTIFICATE_ARN（us-east-1 已签发证书的 ARN）。
 # 尚未启用：真实部署需用户对目标账户与具体动作授权（开发交接 D5）。
 name: deploy
 on:
@@ -49,10 +49,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: CDK diff（记录到运行日志供审阅）
         working-directory: infra
-        run: pnpm exec cdk diff -c account=${{ vars.AWS_ACCOUNT_ID }} -c siteDomain=${{ vars.SITE_DOMAIN }} -c artifactZip=../dist/lambda.zip -c artifactManifest=../dist/manifest.json
+        run: pnpm exec cdk diff -c account=${{ vars.AWS_ACCOUNT_ID }} -c siteDomain=${{ vars.SITE_DOMAIN }} -c siteCertificateArn=${{ vars.SITE_CERTIFICATE_ARN }} -c artifactZip=../dist/lambda.zip -c artifactManifest=../dist/manifest.json
       - name: CDK deploy
         working-directory: infra
-        run: pnpm exec cdk deploy --all --require-approval never -c account=${{ vars.AWS_ACCOUNT_ID }} -c siteDomain=${{ vars.SITE_DOMAIN }} -c artifactZip=../dist/lambda.zip -c artifactManifest=../dist/manifest.json --outputs-file ../dist/outputs.json
+        run: pnpm exec cdk deploy --all --require-approval never -c account=${{ vars.AWS_ACCOUNT_ID }} -c siteDomain=${{ vars.SITE_DOMAIN }} -c siteCertificateArn=${{ vars.SITE_CERTIFICATE_ARN }} -c artifactZip=../dist/lambda.zip -c artifactManifest=../dist/manifest.json --outputs-file ../dist/outputs.json
       - name: 发布前端
         run: |
           BUCKET=$(python3 -c "import json;d=json.load(open('dist/outputs.json'));print(next(v['SiteBucket'] for v in d.values() if 'SiteBucket' in v))")

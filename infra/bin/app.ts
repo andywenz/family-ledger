@@ -8,7 +8,7 @@ const app = new App();
 const cfg = loadConfig(app);
 const env = { account: cfg.account, region: cfg.region };
 let certificate;
-if (cfg.siteDomain) {
+if (cfg.siteDomain && !cfg.siteCertificateArn) {
   const edge = new EdgeCertStack(app, `FamilyLedgerCert-${cfg.envName}`, {
     env: { account: cfg.account, region: "us-east-1" },
     crossRegionReferences: true,
@@ -16,5 +16,5 @@ if (cfg.siteDomain) {
   });
   certificate = edge.certificate;
 }
-new CoreStack(app, `FamilyLedger-${cfg.envName}`, { env, config: cfg, certificate, crossRegionReferences: !!cfg.siteDomain });
+new CoreStack(app, `FamilyLedger-${cfg.envName}`, { env, config: cfg, certificate, crossRegionReferences: !!certificate });
 app.synth();

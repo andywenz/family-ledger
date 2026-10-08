@@ -15,6 +15,7 @@ export interface LedgerConfig {
   account?: string;
   region: string; // 主区域 ap-southeast-2
   siteDomain?: string; // 例如 ledger.example.com（DNS 在 Cloudflare 手工维护）
+  siteCertificateArn?: string; // 已签发的 us-east-1 证书 ARN；设置后直接引用，不再创建证书栈（换域名时避开跨区域引用不同步值变化）
   alertEmail?: string; // 预算备用通知邮箱（私人配置）
   budgetUsd: string; // NZD 15 按账单币种换算后的金额
   modelId: string;
@@ -32,6 +33,7 @@ export function loadConfig(app: App): LedgerConfig {
     account: c("account"),
     region: c("region") ?? "ap-southeast-2",
     siteDomain: c("siteDomain"),
+    siteCertificateArn: c("siteCertificateArn"),
     alertEmail: c("alertEmail"),
     budgetUsd: c("budgetUsd") ?? "9",
     modelId: c("modelId") ?? "amazon.nova-pro-v1:0", // ADR-0015
