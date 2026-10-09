@@ -305,6 +305,7 @@ def run(
     rpm: float = 8,
     resume: str | None = None,
     structured: bool = True,
+    invoke_ids: dict[str, str] | None = None,
 ) -> Path:
     data = json.loads((DATASET / "cases.json").read_text(encoding="utf-8"))
     cases = data["cases"][:limit] if limit else data["cases"]
@@ -354,7 +355,14 @@ def run(
                 boto3.client("bedrock-runtime", region_name=region, config=client_config(60)),
                 model_id,
                 structured=structured,
+                invoke_id=(invoke_ids or {}).get(model_id),
             )
+            if not (invoke_ids or {}).get(model_id):
+                print(
+                    f"警告：{model_id} 直接按基础模型调用，费用不带 Project 标签；"
+                    "可用 --invoke-id 指定带标签的应用推理配置文件 ARN",
+                    file=sys.stderr,
+                )
 
     stopped = False
     pacer = Pacer(60 / rpm if not dry_run else 0)
@@ -541,6 +549,15 @@ def main() -> None:
     )
     ap.add_argument("--resume", help="续跑已有结果目录名（如 20261004T061025Z）")
     ap.add_argument("--rpm", type=float, default=8, help="每分钟请求上限（低于账户配额）")
+    ap.add_argument(
+        "--invoke-id",
+        action="append",
+        default=[],
+        metavar="MODEL=ARN",
+        help="用带 Project 标签的应用推理配置文件调用该模型（可重复）；"
+        "如 amazon.nova-pro-v1:0=arn:aws:bedrock:ap-southeast-2:<账户>"
+        ":application-inference-profile/<id>",
+    )
     ap.add_argument("--rescore", help="只重新评分已有结果目录（不调用模型）")
     a = ap.parse_args()
     if a.rescore:
@@ -555,6 +572,7 @@ def main() -> None:
         rpm=a.rpm,
         resume=a.resume,
         structured=a.mode == "tool",
+        invoke_ids=dict(x.split("=", 1) for x in a.invoke_id),
     )
     print(f"结果：{out}")
 
