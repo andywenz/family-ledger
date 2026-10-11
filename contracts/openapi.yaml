@@ -422,7 +422,7 @@ paths:
     post:
       tags: [admin]
       operationId: createUser
-      summary: 创建个人账号；返回一次性临时密码
+      summary: 创建个人账号；邮件邀请或返回一次性临时密码
       x-authz: system_admin
       x-idempotent: true
       x-acceptance: [AUTH-01, AUTH-04]
@@ -440,11 +440,15 @@ paths:
                 login_name: { $ref: "#/components/schemas/LoginName" }
                 display_name: { $ref: "#/components/schemas/DisplayName" }
                 is_system_admin: { type: boolean, default: false }
+                email:
+                  type: string
+                  maxLength: 254
+                  description: 提供后由身份服务把临时密码发到该邮箱，响应不含密码（`invitation_emailed`）；不提供则沿用管理员转交
       responses:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         default: { $ref: "#/components/responses/Default" }
         "201":
-          description: 已创建。临时密码仅此响应返回一次，重放返回 `temporary_password_redacted`
+          description: 已创建。无邮箱时临时密码仅此响应返回一次，重放返回 `temporary_password_redacted`；有邮箱时返回 `invitation_emailed`
           content:
             application/json:
               schema: { $ref: "#/components/schemas/TemporaryPasswordResult" }
@@ -2498,6 +2502,7 @@ components:
         status: { type: string, enum: [active, disabled] }
         is_system_admin: { type: boolean }
         must_change_password: { type: boolean }
+        email: { type: string, description: 受邀邮箱（可选）}
         version: { $ref: "#/components/schemas/Version" }
     TemporaryPasswordResult:
       type: object
@@ -2508,6 +2513,7 @@ components:
           type: string
           description: 仅首次响应返回；重放时省略并设置 temporary_password_redacted
         temporary_password_redacted: { type: boolean }
+        invitation_emailed: { type: boolean, description: 临时密码已由身份服务发往受邀邮箱 }
 
     # ── 家庭 ──
     FamilySummary:

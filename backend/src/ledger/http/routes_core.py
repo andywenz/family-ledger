@@ -225,6 +225,7 @@ def create_user(req: Request) -> Response:
             login_name=req.body["login_name"],
             display_name=req.body["display_name"],
             is_system_admin=req.body.get("is_system_admin", False),
+            email=req.body.get("email"),
         ),
     )
 

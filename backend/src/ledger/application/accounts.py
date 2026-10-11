@@ -24,6 +24,7 @@ from ledger.identity.ports import (
     InvalidCredentials,
     InvalidPassword,
     TokenVerifier,
+    check_email,
     check_password_policy,
     generate_temporary_password,
 )
@@ -413,6 +414,7 @@ def _admin_view(p: dict[str, Any]) -> dict[str, Any]:
         "status": p["status"],
         "is_system_admin": bool(p.get("is_system_admin", False)),
         "must_change_password": bool(p.get("must_change_password", False)),
+        **({"email": p["email"]} if p.get("email") else {}),
         "version": int(p["version"]),
     }
 
@@ -442,12 +444,23 @@ def create_user(
     login_name: str,
     display_name: str,
     is_system_admin: bool = False,
+    email: str | None = None,
 ) -> dict[str, Any]:
     require_system_admin(actor)
     load_profile(ctx, actor)
     _check_login(login_name)
+    if email:
+        try:
+            email = check_email(email)
+        except ValueError as e:
+            raise ValidationFailed(str(e)) from e
     scope = Scope.account(actor, key)
-    body = {"login": login_name.lower(), "display": display_name, "sysadmin": is_system_admin}
+    body = {
+        "login": login_name.lower(),
+        "display": display_name,
+        "sysadmin": is_system_admin,
+        "email": email or "",
+    }
     fp = actions.fingerprint("admin.user.create", scope, actor, body)
     existing = actions.get_receipt(ctx, scope)
     if existing is not None:
@@ -455,12 +468,19 @@ def create_user(
             raise DomainError("该动作 ID 已用于不同的请求", code="idempotency_key_reused")
         p = ctx.store.get(keys.user(existing["results"][0]["object_id"]), keys.PROFILE)
         assert p is not None
-        return {"user": _admin_view(p), "temporary_password_redacted": True}
+        return {
+            "user": _admin_view(p),
+            "temporary_password_redacted": True,
+            **({"invitation_emailed": True} if email else {}),
+        }
     if user_id_by_login(ctx, login_name) is not None:
         raise DomainError("登录名已被使用", code="login_name_taken")
     uid = _deterministic_uid(actor, key)
     temp = generate_temporary_password()
-    sub = _identity_call(deps.idp.admin_create, uid, temp)
+    if email:  # 邀请邮件由身份服务发送，管理员和应用响应都看不到密码
+        sub = _identity_call(deps.idp.admin_invite, uid, temp, email)
+    else:
+        sub = _identity_call(deps.idp.admin_create, uid, temp)
     profile = create_user_record(
         ctx,
         login_name=login_name,
@@ -469,6 +489,7 @@ def create_user(
         is_system_admin=is_system_admin,
         must_change_password=True,
         user_id=uid,
+        email=email,
     )
     tx = ctx.store.tx()
     tx.put_new(
@@ -486,6 +507,8 @@ def create_user(
         }
     )
     ctx.store.commit(tx)
+    if email:
+        return {"user": _admin_view(profile), "invitation_emailed": True}
     return {"user": _admin_view(profile), "temporary_password": temp}
 
 

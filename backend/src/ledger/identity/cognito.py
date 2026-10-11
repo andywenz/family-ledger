@@ -111,6 +111,31 @@ class CognitoIdentityProvider:
             ]
         return str(next(a["Value"] for a in attrs if a["Name"] == "sub"))
 
+    def admin_invite(self, username: str, temporary_password: str, email: str) -> str:
+        """Cognito 默认发信：邀请邮件携带临时密码（模板在用户池 userInvitation）。"""
+        kw: dict[str, Any] = {
+            "UserPoolId": self.pool,
+            "Username": username,
+            "DesiredDeliveryMediums": ["EMAIL"],
+        }
+        try:
+            out = self.c.admin_create_user(
+                **kw,
+                TemporaryPassword=temporary_password,
+                UserAttributes=[
+                    {"Name": "email", "Value": email},
+                    {"Name": "email_verified", "Value": "true"},
+                ],
+            )
+            attrs = out["User"]["Attributes"]
+        except ClientError as e:
+            if e.response.get("Error", {}).get("Code") != "UsernameExistsException":
+                raise _map(e) from e
+            # 重试：重发原邀请（同一临时密码，并重置有效期），不重新设置密码
+            out = self._call("admin_create_user", **kw, MessageAction="RESEND")
+            attrs = out["User"]["Attributes"]
+        return str(next(a["Value"] for a in attrs if a["Name"] == "sub"))
+
     def admin_set_temporary_password(self, username: str, temporary_password: str) -> None:
         self._call(
             "admin_set_user_password",

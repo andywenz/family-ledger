@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import secrets
 import string
 from dataclasses import dataclass
@@ -58,6 +59,11 @@ class IdentityProvider(Protocol):
         """创建用户并返回身份服务 sub；用户已存在时设置新临时密码并返回原 sub。"""
         ...
 
+    def admin_invite(self, username: str, temporary_password: str, email: str) -> str:
+        """创建用户并由身份服务把临时密码发到 email（管理员看不到密码）；返回 sub。
+        用户已存在（重试）时重发原邀请邮件，不改密码。"""
+        ...
+
     def admin_set_temporary_password(self, username: str, temporary_password: str) -> None: ...
 
     def admin_sign_out(self, username: str) -> None: ...
@@ -70,6 +76,16 @@ class TokenVerifier(Protocol):
 
 
 MIN_PASSWORD = 10
+
+_EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
+
+
+def check_email(email: str) -> str:
+    """返回规范化（小写、去空白）的邮箱；格式不对抛 InvalidPassword 之外的校验由调用方转换。"""
+    e = (email or "").strip().lower()
+    if len(e) > 254 or not _EMAIL_RE.match(e):
+        raise ValueError("邮箱格式不正确")
+    return e
 
 
 def check_password_policy(password: str, login_name: str | None = None) -> None:

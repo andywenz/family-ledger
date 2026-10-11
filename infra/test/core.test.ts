@@ -51,6 +51,12 @@ test("身份：关闭公开注册、密码至少 10 位、无自助找回", () =
   t.hasResourceProperties("AWS::Cognito::UserPoolClient", { GenerateSecret: false, ExplicitAuthFlows: Match.arrayWith(["ALLOW_USER_PASSWORD_AUTH"]), EnableTokenRevocation: true });
 });
 
+test("定向邀请：Cognito 向受邀邮箱发送含临时密码的邮件", () => {
+  t.hasResourceProperties("AWS::Cognito::UserPool", {
+    AdminCreateUserConfig: { InviteMessageTemplate: { EmailSubject: Match.anyValue(), EmailMessage: Match.stringLikeRegexp("\\{####\\}") } },
+  });
+});
+
 test("最小权限：只有 Worker 能调 Bedrock；只有认证管理函数有 Cognito 管理权限", () => {
   const bedrock = policiesWith("bedrock:");
   assert.equal(bedrock.length, 1);

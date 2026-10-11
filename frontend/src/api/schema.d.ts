@@ -262,7 +262,7 @@ export interface paths {
         /** 全站账号列表（不含家庭账目） */
         get: operations["listUsers"];
         put?: never;
-        /** 创建个人账号；返回一次性临时密码 */
+        /** 创建个人账号；邮件邀请或返回一次性临时密码 */
         post: operations["createUser"];
         delete?: never;
         options?: never;
@@ -1321,6 +1321,8 @@ export interface components {
             status: "active" | "disabled";
             is_system_admin: boolean;
             must_change_password: boolean;
+            /** @description 受邀邮箱（可选） */
+            email?: string;
             version: components["schemas"]["Version"];
         };
         TemporaryPasswordResult: {
@@ -1328,6 +1330,8 @@ export interface components {
             /** @description 仅首次响应返回；重放时省略并设置 temporary_password_redacted */
             temporary_password?: string;
             temporary_password_redacted?: boolean;
+            /** @description 临时密码已由身份服务发往受邀邮箱 */
+            invitation_emailed?: boolean;
         };
         FamilySummary: {
             family_id: components["schemas"]["Id"];
@@ -2425,11 +2429,13 @@ export interface operations {
                     display_name: components["schemas"]["DisplayName"];
                     /** @default false */
                     is_system_admin?: boolean;
+                    /** @description 提供后由身份服务把临时密码发到该邮箱，响应不含密码（`invitation_emailed`）；不提供则沿用管理员转交 */
+                    email?: string;
                 };
             };
         };
         responses: {
-            /** @description 已创建。临时密码仅此响应返回一次，重放返回 `temporary_password_redacted` */
+            /** @description 已创建。无邮箱时临时密码仅此响应返回一次，重放返回 `temporary_password_redacted`；有邮箱时返回 `invitation_emailed` */
             201: {
                 headers: {
                     [name: string]: unknown;

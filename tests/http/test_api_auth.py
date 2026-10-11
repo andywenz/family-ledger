@@ -188,3 +188,33 @@ def test_request_validation_and_routing(admin_api: tuple[Api, Account]) -> None:
     assert api.get("/families/bad$id")[0] == 422
     status, err = api.get("/health", auth=False)
     assert status == 200 and err["env"] == "local"
+
+
+def test_admin_invite_by_email_hides_password_and_first_login_forces_change(
+    admin_api: tuple[Api, Account], runtime: Runtime
+) -> None:
+    api, _ = admin_api
+    login = f"iv{time.time_ns() % 10**8}"
+    body = {"login_name": login, "display_name": "受邀", "email": " Invitee@Example.com "}
+    s1, d1 = api.post("/admin/users", body, key="invite-key-000000001")
+    assert s1 == 201 and d1["invitation_emailed"] is True
+    assert "temporary_password" not in d1 and d1["user"]["email"] == "invitee@example.com"
+    # 重放：同样不含密码，且不会再发一封
+    s2, d2 = api.post("/admin/users", body, key="invite-key-000000001")
+    assert s2 == 201 and d2["invitation_emailed"] and d2["temporary_password_redacted"] is True
+    sent = runtime.auth.idp.outbox  # type: ignore[attr-defined]
+    assert [e for e, _ in sent if e == "invitee@example.com"] == ["invitee@example.com"]
+    temp = next(p for e, p in sent if e == "invitee@example.com")
+    # 首次登录：邮件里的临时密码只能换来“必须改密”挑战，不能直接进业务
+    m = Api(runtime, ip="192.0.2.140")
+    status, data = m.post("/auth/login", {"login_name": login, "password": temp}, auth=False)
+    assert status == 200 and data["status"] == "challenge"
+
+
+def test_admin_invite_rejects_bad_email(admin_api: tuple[Api, Account]) -> None:
+    api, _ = admin_api
+    status, err = api.post(
+        "/admin/users",
+        {"login_name": f"be{time.time_ns() % 10**8}", "display_name": "x", "email": "not-an-email"},
+    )
+    assert status == 422 and err["error"]["code"] == "validation_failed", err

@@ -94,3 +94,31 @@ def test_admin_create_suppresses_email_and_handles_existing(stubbed) -> None:  #
         assert idp.admin_create("u2", "T-2aaaaaaa") == "sub-2"
         idp.admin_sign_out("u2")
     st.assert_no_pending_responses()
+
+
+def test_admin_invite_emails_temp_password_and_resends_on_retry(stubbed) -> None:  # noqa: ANN001
+    idp, st = stubbed
+    base = {"UserPoolId": POOL, "DesiredDeliveryMediums": ["EMAIL"]}
+    st.add_response(
+        "admin_create_user",
+        {"User": {"Attributes": [{"Name": "sub", "Value": "sub-1"}]}},
+        {
+            **base,
+            "Username": "u1",
+            "TemporaryPassword": "T-1aaaaaaa",
+            "UserAttributes": [
+                {"Name": "email", "Value": "a@example.com"},
+                {"Name": "email_verified", "Value": "true"},
+            ],
+        },
+    )
+    st.add_client_error("admin_create_user", "UsernameExistsException")
+    st.add_response(
+        "admin_create_user",
+        {"User": {"Attributes": [{"Name": "sub", "Value": "sub-2"}]}},
+        {**base, "Username": "u2", "MessageAction": "RESEND"},
+    )
+    with st:
+        assert idp.admin_invite("u1", "T-1aaaaaaa", "a@example.com") == "sub-1"
+        assert idp.admin_invite("u2", "T-2aaaaaaa", "b@example.com") == "sub-2"
+    st.assert_no_pending_responses()

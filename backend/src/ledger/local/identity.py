@@ -71,6 +71,7 @@ class LocalIdentityProvider:
         self.store = store
         self.key = key
         self.clock = clock
+        self.outbox: list[tuple[str, str | None]] = []
 
     def _pk(self, username: str) -> str:
         return f"LOCALIDP#{username}"
@@ -213,6 +214,15 @@ class LocalIdentityProvider:
 
     def admin_create(self, username: str, temporary_password: str) -> str:
         return self._set_password(username, temporary_password, temporary=True)
+
+    def admin_invite(self, username: str, temporary_password: str, email: str) -> str:
+        """本地没有邮件服务：把“邮件”记入 outbox（仅本地替身与测试可见）。"""
+        if self._user(username) is not None:
+            self.outbox.append((email, None))  # 重发：不改密码
+            return str(self._user(username)["sub"])  # type: ignore[index]
+        sub = self._set_password(username, temporary_password, temporary=True)
+        self.outbox.append((email, temporary_password))
+        return sub
 
     def admin_set_temporary_password(self, username: str, temporary_password: str) -> None:
         if self._user(username) is None:

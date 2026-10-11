@@ -90,6 +90,12 @@ export class CoreStack extends Stack {
       signInCaseSensitive: false,
       passwordPolicy: { minLength: 10, requireLowercase: true, requireDigits: true, requireUppercase: false, requireSymbols: false, tempPasswordValidity: Duration.days(7) },
       accountRecovery: AccountRecovery.NONE, // 无邮箱自助找回，由系统管理员重置
+      // 定向邀请：管理员创建账号时 Cognito 把临时密码发到受邀邮箱（默认发信，无 SES 费用）。
+      // Cognito 要求模板含 {username}，但它是内部账号 ID、登录时用不到；真正的登录名由管理员另行告知（密码与登录名分开交付）。
+      userInvitation: {
+        emailSubject: "小家账本｜你的临时密码",
+        emailBody: "你被邀请使用小家账本。临时密码：{####}\n\n账号 ID：{username}（仅供核对，登录时不用）。请向邀请你的人要登录名，首次登录后会要求你设置新密码。临时密码 7 天内有效。如非本人预期，请忽略此邮件。",
+      },
       removalPolicy: RemovalPolicy.RETAIN,
     });
     const client = new UserPoolClient(this, "WebClient", {

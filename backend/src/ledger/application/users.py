@@ -32,6 +32,7 @@ def create_user_record(
     is_system_admin: bool = False,
     must_change_password: bool = True,
     user_id: str | None = None,
+    email: str | None = None,
 ) -> dict[str, Any]:
     """创建账号记录及唯一登录名映射（单事务）。供系统管理员用例与本地初始化调用。"""
     _check_login(login_name)
@@ -50,6 +51,7 @@ def create_user_record(
         "status": "active",
         "is_system_admin": is_system_admin,
         "must_change_password": must_change_password,
+        **({"email": email} if email else {}),
         "session_epoch": 0,
         "version": 1,
         "created_at": now,

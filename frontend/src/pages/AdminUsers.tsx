@@ -11,18 +11,30 @@ export default function AdminUsers() {
   const action = useAction<Schemas["TemporaryPasswordResult"]>();
   const [login, setLogin] = useState("");
   const [display, setDisplay] = useState("");
+  const [email, setEmail] = useState("");
+  const [invited, setInvited] = useState<{ login: string; email: string } | null>(null);
   const [secret, setSecret] = useState<{ login: string; password: string } | null>(null);
 
   async function issue(fn: (key: string) => Promise<Schemas["TemporaryPasswordResult"]>) {
     const r = await action.run(fn);
+    if (r?.invitation_emailed) setInvited({ login: r.user.login_name, email: r.user.email ?? "" });
     if (r?.temporary_password) setSecret({ login: r.user.login_name, password: r.temporary_password });
     await users.reload();
   }
 
   return (
     <PlainShell title={tr("系统账号", "User accounts")}>
-      <PageHeading title={tr("系统账号", "User accounts")} subtitle={tr("没有公开注册。系统管理员创建账号并私下交付临时密码；首次登录必须修改。", "There’s no public sign-up. The system admin creates accounts and hands over a temporary password privately; it must be changed at first sign-in.")} />
+      <PageHeading title={tr("系统账号", "User accounts")} subtitle={tr("没有公开注册。系统管理员填写受邀人邮箱创建账号，临时密码由系统发到该邮箱；首次登录必须修改。", "There’s no public sign-up. The system admin creates an account with the invitee’s email; the system emails the temporary password, which must be changed at first sign-in.")} />
       <ErrorNotice error={users.error ?? action.error} />
+      {invited && (
+        <div className="notice" role="status">
+          <div>
+            <strong>{tr(`已向 ${invited.email} 发送邀请邮件。`, `Invitation emailed to ${invited.email}.`)}</strong>
+            <p>{tr(`邮件里只有临时密码；请另行告知对方登录名：${invited.login}。`, `The email contains only the temporary password; tell them the username separately: ${invited.login}.`)}</p>
+            <button className="button secondary small" onClick={() => setInvited(null)}>{tr("知道了", "OK")}</button>
+          </div>
+        </div>
+      )}
       {secret && (
         <div className="notice secret-notice" role="alert">
           <div>
@@ -36,10 +48,11 @@ export default function AdminUsers() {
       <div className="settings-grid">
         <section className="card">
           <div className="section-head"><h2>{tr("创建账号", "Create account")}</h2></div>
-          <form onSubmit={(e) => { e.preventDefault(); void issue((key) => api.post("/admin/users", { login_name: login, display_name: display }, { key })).then(() => { setLogin(""); setDisplay(""); }); }}>
+          <form onSubmit={(e) => { e.preventDefault(); void issue((key) => api.post("/admin/users", { login_name: login, display_name: display, ...(email.trim() ? { email: email.trim() } : {}) }, { key })).then(() => { setLogin(""); setDisplay(""); setEmail(""); }); }}>
             <div className="field-grid">
               <label className="field">{tr("登录名", "Username")}<input value={login} onChange={(e) => setLogin(e.target.value)} required /></label>
               <label className="field">{tr("显示名", "Display name")}<input value={display} maxLength={24} onChange={(e) => setDisplay(e.target.value)} required /></label>
+              <label className="field">{tr("邮箱（用于发送临时密码）", "Email (receives the temporary password)")}<input type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
             </div>
             <button className="button primary" disabled={action.busy}>{tr("创建", "Create")}</button>
           </form>
