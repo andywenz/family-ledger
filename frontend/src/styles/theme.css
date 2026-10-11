@@ -417,7 +417,8 @@ html:has(dialog[open]){overflow:hidden}
   /* 表单紧凑：两列并排（含日期框），字段间距收小 */
   html[data-theme] #record-dialog .field-grid,html[data-theme] #record-dialog .field-grid:has(input[type="date"]){grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 10px}
   html[data-theme] #record-dialog .field{margin-bottom:8px;gap:3px;font-size:12px}
-  html[data-theme] #record-dialog .field input,html[data-theme] #record-dialog .field select,html[data-theme] #record-dialog .field textarea{min-height:40px;padding-block:6px;font-size:16px}
+  html[data-theme] #record-dialog .field input,html[data-theme] #record-dialog .field select,html[data-theme] #record-dialog .field textarea{padding-block:6px;font-size:16px}
+  html[data-theme] #record-dialog .field input:not([type="checkbox"]):not([type="file"]),html[data-theme] #record-dialog .field select{height:42px}
   html[data-theme] #record-dialog input[type="date"]{min-width:0;width:100%;-webkit-appearance:none;appearance:none}
   html[data-theme] #record-dialog textarea{min-height:48px;height:48px;resize:none}
   html[data-theme] #record-dialog .edit-note{display:none}
@@ -430,4 +431,29 @@ html:has(dialog[open]){overflow:hidden}
   html[data-theme] #record-dialog .notice{margin-bottom:10px}
   /* 没有 form 包裹的对话框（详情、更多）也让底部操作区贴底 */
   html[data-theme] #record-dialog .dialog-body>.form-actions{margin-top:auto}
+}
+
+/* ── 手机控件对齐（2026-10-12）：同一行的输入框、下拉框、按钮等高等宽，左右边缘落在同一条线上 ── */
+@media(max-width:650px){
+  /* 输入框与下拉框统一高度；日期框原生比文本框高 2px，去掉原生外观后与其他框对齐 */
+  html[data-theme] .field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),html[data-theme] .field select{height:50px;min-width:0}
+  html[data-theme] .field input[type="date"]{-webkit-appearance:none;appearance:none;width:100%}
+  html[data-theme] .field select{text-overflow:ellipsis}
+  /* 页面标题下的月份选择器与主按钮同高 */
+  html[data-theme] .heading-actions{align-items:stretch}
+  html[data-theme] .heading-actions .month-picker,html[data-theme] .heading-actions .button{height:46px;min-height:46px;box-sizing:border-box}
+  html[data-theme] .heading-actions .month-picker{flex:1;justify-content:space-between;max-width:260px}
+  /* 明细筛选：下拉框、搜索框、导出按钮同高，达到 44px 触控高度 */
+  html[data-theme] .ledger-top .filters select,html[data-theme] .ledger-top .search-box,html[data-theme] .ledger-top .export-menu>summary{height:44px;min-height:44px;box-sizing:border-box;font-size:13px}
+  html[data-theme] .ledger-top .export-menu>summary{display:flex;align-items:center;justify-content:center}
+  /* 页面里的表单操作区：按钮等分整行，不再靠右留出参差的空白（行内的 compact 保持原样） */
+  html[data-theme] main .form-actions:not(.compact){display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px}
+  html[data-theme] main .form-actions:not(.compact) .button{min-height:48px}
+  /* 成员行：名称在上，操作按钮另起一行靠右、等高 */
+  html[data-theme] .member-row .row-actions{flex-basis:100%;margin-left:0;display:flex;justify-content:flex-end;gap:8px}
+  html[data-theme] .member-row .row-actions .button{min-height:40px}
+  /* 两列网格里落单的最后一项（如“消费方式”）占满整行，不留半边空白 */
+  html[data-theme] .field-grid>.field:last-child:nth-child(odd){grid-column:1/-1}
+  /* 对话框里同样用 10px 间距，与按钮之间一致 */
+  html[data-theme] #record-dialog .form-actions{gap:10px}
 }
