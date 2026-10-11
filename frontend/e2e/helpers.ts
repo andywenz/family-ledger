@@ -37,3 +37,17 @@ export async function shot(page: Page, name: string, project: string) {
   if (process.env.SAVE_SCREENSHOTS !== "1") return;
   await page.screenshot({ path: `../verification/evidence/d2-screens/${name}-${project}.png`, fullPage: true });
 }
+
+/** 手机对话框不应出现内部滚动：内容区放得下，且对话框不超出视口。DIALOG_SHOTS_DIR 设置时顺便截图。 */
+export async function dialogFitsViewport(page: Page, name: string) {
+  const m = await page.evaluate(() => {
+    const d = document.querySelector("#record-dialog")!;
+    const body = d.querySelector(".dialog-body")!;
+    const r = d.getBoundingClientRect();
+    return { scroll: body.scrollHeight, client: body.clientHeight, top: r.top, bottom: r.bottom, vh: window.innerHeight };
+  });
+  if (process.env.DIALOG_SHOTS_DIR) await page.screenshot({ path: `${process.env.DIALOG_SHOTS_DIR}/${name}.png` });
+  expect(m.scroll, `${name}：对话框内容区不应需要滚动`).toBeLessThanOrEqual(m.client + 1);
+  expect(m.top, `${name}：对话框顶部不应超出视口`).toBeGreaterThanOrEqual(0);
+  expect(m.bottom).toBeLessThanOrEqual(m.vh + 1);
+}

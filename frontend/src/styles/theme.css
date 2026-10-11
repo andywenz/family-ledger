@@ -388,3 +388,46 @@ html[data-theme] .rate-ratio small{font-size:11px;font-weight:600;color:var(--mu
 html[data-theme] .entry-day-head,html[data-theme] .entry-day-head span{color:var(--th-ink)}
 /* 英文品牌名较长：保持一行 */
 html[lang="en"] .sidebar .brand span{white-space:nowrap;font-size:19px}
+
+/* ── 手机对话框：底部面板（2026-10-12 手机端审视） ──
+   原先是居中的小窗，内容超出时窗内出现滚动条。改为贴底面板：标题与操作按钮固定，
+   表单两列紧凑排布，正常内容一屏放下；极端情况（超小屏、放大字体）才在中间区域滚动，且不显示滚动条。 */
+html:has(dialog[open]){overflow:hidden}
+@media(max-width:650px){
+  html[data-theme] #record-dialog{
+    margin:auto 0 0;width:100%;max-width:none;max-height:calc(100dvh - 12px);
+    padding:0;border-radius:18px 18px 0 0;border-bottom:0;overflow:hidden;
+  }
+  html[data-theme] #record-dialog[open]{display:flex;flex-direction:column}
+  html[data-theme] #record-dialog .dialog-heading{flex:none;margin:0;padding:14px 16px 10px;position:relative}
+  html[data-theme] #record-dialog .dialog-heading::before{content:"";position:absolute;top:6px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--muted);opacity:.35}
+  html[data-theme] #record-dialog .dialog-heading h2{font-size:17px}
+  html[data-theme] #record-dialog .dialog-heading .icon-button{width:40px;height:40px;font-size:24px;margin:-6px -8px -6px 0}
+  /* 中间区域：内容放得下就不滚；放不下才滚，隐藏滚动条并且不把滚动传给页面 */
+  html[data-theme] #record-dialog .dialog-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;padding:0 16px}
+  html[data-theme] #record-dialog .dialog-body::-webkit-scrollbar{display:none}
+  html[data-theme] #record-dialog .entry-form{display:flex;flex-direction:column;min-height:0}
+  /* 操作区固定在面板底部，并避开 iPhone 底部横条；按钮等分整行，≥44px 好点按 */
+  html[data-theme] #record-dialog .form-actions{
+    position:sticky;bottom:0;z-index:2;margin:8px -16px 0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    background:var(--dialog-bg);display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;
+  }
+  html[data-theme] #record-dialog .form-actions .button{min-height:46px;font-size:14px;padding-inline:8px}
+  html[data-theme] #record-dialog .form-actions .dialog-dismiss{display:none}
+  /* 表单紧凑：两列并排（含日期框），字段间距收小 */
+  html[data-theme] #record-dialog .field-grid,html[data-theme] #record-dialog .field-grid:has(input[type="date"]){grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 10px}
+  html[data-theme] #record-dialog .field{margin-bottom:8px;gap:3px;font-size:12px}
+  html[data-theme] #record-dialog .field input,html[data-theme] #record-dialog .field select,html[data-theme] #record-dialog .field textarea{min-height:40px;padding-block:6px;font-size:16px}
+  html[data-theme] #record-dialog input[type="date"]{min-width:0;width:100%;-webkit-appearance:none;appearance:none}
+  html[data-theme] #record-dialog textarea{min-height:48px;height:48px;resize:none}
+  html[data-theme] #record-dialog .edit-note{display:none}
+  html[data-theme] #record-dialog .tiny-note{margin:0 0 8px;font-size:12px}
+  html[data-theme] #record-dialog .conversion-strip{margin-bottom:8px;padding:8px 10px;gap:8px;font-size:11px}
+  html[data-theme] #record-dialog .conversion-strip strong{font-size:14px;margin-top:2px}
+  html[data-theme] #record-dialog .upload-button,html[data-theme] #record-dialog .upload-chip{min-height:36px}
+  html[data-theme] #record-dialog .detail-list{margin-bottom:8px;gap:6px 10px;font-size:14px}
+  html[data-theme] #record-dialog .more-sheet a{min-height:48px}
+  html[data-theme] #record-dialog .notice{margin-bottom:10px}
+  /* 没有 form 包裹的对话框（详情、更多）也让底部操作区贴底 */
+  html[data-theme] #record-dialog .dialog-body>.form-actions{margin-top:auto}
+}

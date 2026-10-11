@@ -83,7 +83,7 @@ export function EntryDialog({ entry, onClose, onChanged }: Props) {
       <ErrorNotice error={action.error} />
       <UnknownPanel action={action as never} onCommitted={() => onChanged(tr("已确认删除完成", "Deletion confirmed"))} onRetry={() => void remove()} />
       <div className="form-actions">
-        <button className="button secondary" onClick={onClose}>{tr("关闭", "Close")}</button>
+        <button className="button secondary dialog-dismiss" onClick={onClose}>{tr("关闭", "Close")}</button>
         {entry.type === "expense" && Number(entry.refundable_amount ?? 0) > 0 && (
           <button className="button secondary" onClick={() => setMode("refund")}><Icon name="undo" />{tr("退款", "Refund")}</button>
         )}

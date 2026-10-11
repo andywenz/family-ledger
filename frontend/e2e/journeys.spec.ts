@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { NEW_PASSWORD, adminFor, firstLogin, loginAndWait, noHorizontalOverflow, shot } from "./helpers";
+import { NEW_PASSWORD, adminFor, dialogFitsViewport, firstLogin, loginAndWait, noHorizontalOverflow, shot } from "./helpers";
 
 // 串行旅程：同一个测试管理员，桌面与手机各跑一遍（各自新建家庭）。
 test.describe.configure({ mode: "serial" });
@@ -71,6 +71,7 @@ test("首次登录→创建家庭→记一笔→编辑→退款→删除恢复",
 
   // 编辑：取消不变，保存更新同一行（ACC-12 浏览器旅程）
   await page.getByRole("button", { name: /查看或编辑/ }).first().click();
+  if (project === "mobile") await dialogFitsViewport(page, "detail");
   await page.getByRole("dialog").getByRole("button", { name: "编辑", exact: true }).click();
   await page.getByLabel("原始金额", { exact: true }).fill("18");
   await page.getByRole("dialog").getByRole("button", { name: "取消", exact: true }).click();
@@ -80,6 +81,7 @@ test("首次登录→创建家庭→记一笔→编辑→退款→删除恢复",
   await page.getByRole("dialog").getByRole("button", { name: "编辑", exact: true }).click();
   await page.getByLabel("原始金额", { exact: true }).fill("18");
   await shot(page, "04-edit-dialog", project);
+  if (project === "mobile") await dialogFitsViewport(page, "edit");
   await page.getByRole("dialog").getByRole("button", { name: "保存修改", exact: true }).click();
   await expect(page.locator(".spending-hero .number")).toContainText("18.00");
   await expect(page.locator(".ledger-card [data-entry]")).toHaveCount(1);
@@ -88,6 +90,7 @@ test("首次登录→创建家庭→记一笔→编辑→退款→删除恢复",
   await page.getByRole("button", { name: /查看或编辑/ }).first().click();
   await page.getByRole("dialog").getByRole("button", { name: "退款", exact: true }).click();
   await expect(page.getByText(/尚可退款 NZD 18\.00/)).toBeVisible();
+  if (project === "mobile") await dialogFitsViewport(page, "refund");
   await page.getByLabel("原始金额", { exact: true }).fill("3");
   await page.getByRole("dialog").getByRole("button", { name: "保存退款", exact: true }).click();
   await expect(page.locator(".ledger-card [data-entry]")).toHaveCount(2);

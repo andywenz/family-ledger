@@ -166,12 +166,18 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
     return () => d?.close();
   }, []);
   return (
-    <dialog ref={ref} id="record-dialog" className={wide ? "wide" : ""} aria-label={title} onCancel={(e) => { e.preventDefault(); onClose(); }}>
+    <dialog ref={ref} id="record-dialog" className={wide ? "wide" : ""} aria-label={title} onCancel={(e) => { e.preventDefault(); onClose(); }}
+      onClick={(e) => {
+        // 点击面板外的遮罩关闭（手机习惯）；对话框自身的内边距不算
+        if (e.target !== e.currentTarget) return;
+        const r = e.currentTarget.getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) onClose();
+      }}>
       <div className="dialog-heading">
         <h2>{title}</h2>
         <button type="button" className="icon-button" aria-label={tr("关闭", "Close")} onClick={onClose}>×</button>
       </div>
-      {children}
+      <div className="dialog-body">{children}</div>
     </dialog>
   );
 }

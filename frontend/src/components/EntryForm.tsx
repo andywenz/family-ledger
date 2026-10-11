@@ -140,7 +140,7 @@ export function EntryForm({ mode, entry, onSaved, onCancel }: Props) {
           <br />{tr(`尚可退款 ${entry!.currency} ${money(entry!.refundable_amount ?? "0")}；退款沿用原消费的分类、币种与方式。`, `Up to ${entry!.currency} ${money(entry!.refundable_amount ?? "0")} can be refunded. The refund uses the original expense’s category, currency and method.`)}
         </p>
       )}
-      {mode === "edit" && <p className="tiny-note">{tr("修改同一笔记录，不会新增账目。原录入人：", "This edits the same entry; no new entry is created. Entered by: ")}{entry!.created_by_display}</p>}
+      {mode === "edit" && <p className="tiny-note edit-note">{tr("修改同一笔记录，不会新增账目。原录入人：", "This edits the same entry; no new entry is created. Entered by: ")}{entry!.created_by_display}</p>}
       <div className="field-grid">
         <label className="field">
           {tr("记录类型", "Type")}
